@@ -1,0 +1,6 @@
+/plans*
+/node_modules*
+/apps/web/node_modules*
+/apps/server/node_modules*
+
+.env*
