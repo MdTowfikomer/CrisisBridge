@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -39,6 +42,25 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        /* Crisis-specific semantic tokens */
+        crisis: {
+          medical: "hsl(var(--crisis-medical, 0 72% 51%))",
+          fire: "hsl(var(--crisis-fire, 25 90% 50%))",
+          security: "hsl(var(--crisis-security, 40 92% 48%))",
+        },
+        status: {
+          safe: "hsl(var(--status-safe, 152 60% 42%))",
+          ack: "hsl(var(--status-ack, 262 55% 55%))",
+          ai: "hsl(var(--ai-accent, 210 85% 48%))",
+        },
+        ops: {
+          clear: "hsl(var(--ops-all-clear, 152 60% 42%))",
+          active: "hsl(var(--ops-active, 0 72% 51%))",
+          escalated: "hsl(var(--ops-escalated, 340 70% 50%))",
+          info: "hsl(var(--ops-info, 195 75% 48%))",
+          warning: "hsl(var(--ops-warning, 40 92% 48%))",
+          ack: "hsl(var(--ops-ack, 262 55% 55%))",
         },
       },
       borderRadius: {

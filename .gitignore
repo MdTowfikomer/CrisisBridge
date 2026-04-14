@@ -2,5 +2,10 @@
 /node_modules*
 /apps/web/node_modules*
 /apps/server/node_modules*
-
-.env*
+/apps/server/data/*.jsonl
+/packages/types/dist*
+/packages/types/node_modules*
+.env
+.env.local
+.env.*.local
+!.env.example

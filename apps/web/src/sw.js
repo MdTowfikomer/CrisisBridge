@@ -12,7 +12,7 @@ const bgSyncPlugin = new BackgroundSyncPlugin('emergency-alerts-queue', {
 });
 
 registerRoute(
-  ({ url }) => url.pathname === '/triage',
+  ({ request, url }) => request.method === 'POST' && url.pathname.endsWith('/triage'),
   new NetworkOnly({
     plugins: [bgSyncPlugin]
   }),
