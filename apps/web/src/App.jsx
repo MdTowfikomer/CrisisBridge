@@ -127,7 +127,7 @@ function App() {
     const alertData = {
       type,
       location,
-      description: normalizedDescription || undefined,
+      description: normalizedDescription,
       timestamp: Date.now(),
       status: 'PENDING',
       entryMethod,
