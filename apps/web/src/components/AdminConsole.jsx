@@ -19,9 +19,11 @@ import {
 } from 'lucide-react';
 import { rtdb } from '../lib/firebase';
 import { ProvisioningDashboard } from './ProvisioningDashboard';
+import { LiveTrackingPanel } from './LiveTrackingPanel';
 
 const NAV_ITEMS = [
   { id: 'live-incidents', label: 'Live Incidents', href: '/admin', icon: BellRing, status: 'Live' },
+  { id: 'live-tracking', label: 'Live Evacuation', href: '/admin/live-tracking', icon: MapPin, status: 'Live' },
   { id: 'overview', label: 'Overview', href: '/admin/overview', icon: LayoutDashboard, status: 'Live' },
   { id: 'provisioning', label: 'Room Provisioning', href: '/admin/provisioning', icon: QrCode, status: 'Live' },
   { id: 'nfc', label: 'NFC Stickers', href: '/admin/nfc', icon: Nfc, status: 'Live' },
@@ -382,6 +384,12 @@ export const AdminConsole = ({ apiBaseUrl, section }) => {
           acknowledgedCount={acknowledgedCount}
           resolvedCount={resolvedCount}
         />
+      );
+    }
+
+    if (activeSection === 'live-tracking') {
+      return (
+        <LiveTrackingPanel apiBaseUrl={apiBaseUrl} />
       );
     }
 

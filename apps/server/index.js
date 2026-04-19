@@ -15,6 +15,7 @@ import {
   getLedgerFilePath,
   verifyIncidentAuditTrail,
 } from './services/auditLedger.js';
+import { NavigationService } from './services/navigation.js';
 
 const fastify = Fastify({
   logger: true,
@@ -277,6 +278,44 @@ fastify.get('/audit/:alertId', async (request, reply) => {
 
     fastify.log.error(error, 'Audit retrieval failed');
     return reply.code(500).send({ error: 'Failed to retrieve audit trail' });
+  }
+});
+
+fastify.post('/navigate', async (request, reply) => {
+  try {
+    const { property, from, to, hazards } = request.body || {};
+    if (!property || !from) {
+      return reply.code(400).send({ error: 'property and from fields are required' });
+    }
+    const route = await NavigationService.calculateRoute({ property, from, to, hazards: hazards || [] });
+    return { success: true, route };
+  } catch (error) {
+    fastify.log.error(error, 'Navigation route failed');
+    return reply.code(500).send({ error: error.message || 'Navigation failed' });
+  }
+});
+
+fastify.get('/map/:propertyId', async (request, reply) => {
+  try {
+    const { propertyId } = request.params;
+    const map = await NavigationService.getMapData(propertyId);
+    return { success: true, map };
+  } catch (error) {
+    fastify.log.error(error, 'Map route failed');
+    return reply.code(500).send({ error: 'Failed to get map data' });
+  }
+});
+
+fastify.get('/floorplan/:propertyId', async (request, reply) => {
+  try {
+    const { propertyId } = request.params;
+    const svg = await NavigationService.getFloorplanSvg(propertyId);
+    reply.header('Content-Type', 'image/svg+xml');
+    reply.header('Cache-Control', 'public, max-age=3600');
+    return svg;
+  } catch (error) {
+    fastify.log.error(error, 'Floorplan route failed');
+    return reply.code(404).send({ error: 'Floor plan not found' });
   }
 });
 
