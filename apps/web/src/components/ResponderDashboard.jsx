@@ -255,7 +255,7 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
                        )}
                     </div>
                  </div>
-              </div>
+              </motion.div>
 
               {/* Dynamic Map Component */}
               <div className="flex-1 w-full h-full">
