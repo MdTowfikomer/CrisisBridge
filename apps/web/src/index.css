@@ -1,117 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  /* ─── Guest Side: Clean, Clinical White ─── */
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 215 25% 10%;
-
-    --card: 210 20% 98%;
-    --card-foreground: 215 25% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 10%;
-
-    --primary: 210 85% 48%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 215 25% 27%;
-
-    --muted: 210 16% 93%;
-    --muted-foreground: 215 14% 46%;
-
-    --accent: 166 60% 42%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 214 20% 90%;
-    --input: 214 20% 90%;
-    --ring: 210 85% 48%;
-    --radius: 0.75rem;
-
-    /* Crisis-Specific Tokens — Guest */
-    --crisis-medical: 0 72% 51%;
-    --crisis-fire: 25 90% 50%;
-    --crisis-security: 40 92% 48%;
-    --status-safe: 152 60% 42%;
-    --status-ack: 262 55% 55%;
-    --ai-accent: 210 85% 48%;
-  }
-
-  /* ─── Admin / Responder: Dark Command-Center ─── */
-  [data-view="responder"],
-  [data-view="admin"] {
-    --background: 224 40% 7%;
-    --foreground: 210 30% 96%;
-
-    --card: 222 28% 14%;
-    --card-foreground: 210 30% 96%;
-
-    --popover: 223 32% 11%;
-    --popover-foreground: 210 30% 96%;
-
-    --primary: 210 80% 52%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 223 32% 11%;
-    --secondary-foreground: 210 30% 96%;
-
-    --muted: 220 18% 20%;
-    --muted-foreground: 215 12% 50%;
-
-    --accent: 152 60% 42%;
-    --accent-foreground: 224 40% 7%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 16% 20%;
-    --input: 223 32% 11%;
-    --ring: 210 80% 52%;
-
-    /* Ops-Specific Tokens — Admin */
-    --ops-all-clear: 152 60% 42%;
-    --ops-active: 0 72% 51%;
-    --ops-escalated: 340 70% 50%;
-    --ops-info: 195 75% 48%;
-    --ops-warning: 40 92% 48%;
-    --ops-ack: 262 55% 55%;
-  }
+:root {
+  /* Crisis Design System: High-Contrast / Low-Cognitive Load */
+  --crisis-bg: #0c0d12;
+  --crisis-red: #ef4444;
+  --crisis-amber: #f59e0b;
+  --crisis-green: #10b981;
+  --crisis-blue: #3b82f6;
+  --crisis-white: #ffffff;
+  --crisis-slate: #64748b;
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-[var(--crisis-bg)] text-white antialiased;
+    font-family: 'Noto Sans', sans-serif;
+    touch-action: manipulation;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Figtree', sans-serif;
   }
 }
 
-/* ─── Utility Animations ─── */
-@keyframes breathe {
-  0%, 100% { opacity: 0.85; }
-  50% { opacity: 1; }
+@layer components {
+  /* Ultra-bold emergency button style */
+  .btn-crisis-trigger {
+    @apply relative flex flex-col items-center justify-center p-8 rounded-[2rem] transition-all active:scale-95 overflow-hidden;
+  }
 }
 
-@keyframes alert-pulse-border {
-  0%, 100% { border-color: hsl(0 72% 51% / 0.5); }
-  50% { border-color: hsl(0 72% 51% / 0.9); }
-}
-
-.animate-breathe {
-  animation: breathe 2.5s ease-in-out infinite;
+/* Custom animations for crisis states */
+@keyframes alert-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.98); }
 }
 
 .animate-alert-pulse {
-  animation: alert-pulse-border 1.5s ease-in-out infinite;
+  animation: alert-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

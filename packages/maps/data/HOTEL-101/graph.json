@@ -1,0 +1,32 @@
+{
+  "propertyId": "HOTEL-101",
+  "name": "Grand Hotel",
+  "floorplan": "floorplan.svg",
+  "viewBox": "0 0 800 500",
+  "nodes": {
+    "N1": { "id": "N1", "x": 130, "y": 350, "floor": 3, "label": "Lobby", "type": "checkpoint" },
+    "N2": { "id": "N2", "x": 200, "y": 250, "floor": 3, "label": "Hallway A", "type": "path" },
+    "N3": { "id": "N3", "x": 330, "y": 250, "floor": 3, "label": "Stairs Landing", "type": "path" },
+    "N4": { "id": "N4", "x": 330, "y": 465, "floor": 3, "label": "Exit 1", "type": "exit" },
+    "N5": { "id": "N5", "x": 330, "y": 120, "floor": 3, "label": "Room 305", "type": "room" },
+    "N6": { "id": "N6", "x": 130, "y": 120, "floor": 3, "label": "Room 306", "type": "room" },
+    "N7": { "id": "N7", "x": 690, "y": 250, "floor": 3, "label": "Hallway B", "type": "path" },
+    "N8": { "id": "N8", "x": 760, "y": 250, "floor": 3, "label": "Exit 2", "type": "exit" }
+  },
+  "edges": [
+    { "from": "N1", "to": "N2", "weight": 10, "instruction": "Head upstairs to the main corridor — Hallway A" },
+    { "from": "N2", "to": "N1", "weight": 10, "instruction": "Go down to Lobby" },
+    { "from": "N2", "to": "N3", "weight": 12, "instruction": "Walk right along the corridor towards the Stairwell" },
+    { "from": "N3", "to": "N2", "weight": 12, "instruction": "Walk left along the corridor towards Hallway A" },
+    { "from": "N3", "to": "N4", "weight": 15, "instruction": "Descend the stairwell to Exit 1 on the ground floor" },
+    { "from": "N4", "to": "N3", "weight": 18, "instruction": "Climb stairs to Floor 3 landing" },
+    { "from": "N2", "to": "N5", "weight": 8, "instruction": "Go through the door into Room 305" },
+    { "from": "N5", "to": "N2", "weight": 8, "instruction": "Exit Room 305 into Hallway A" },
+    { "from": "N1", "to": "N6", "weight": 8, "instruction": "Go through the door into Room 306" },
+    { "from": "N6", "to": "N1", "weight": 8, "instruction": "Exit Room 306 into the Lobby" },
+    { "from": "N3", "to": "N7", "weight": 20, "instruction": "Continue right through the long corridor to Hallway B" },
+    { "from": "N7", "to": "N3", "weight": 20, "instruction": "Walk back left through the corridor to the Stairwell" },
+    { "from": "N7", "to": "N8", "weight": 5, "instruction": "Proceed to Exit 2 — the emergency door is straight ahead" },
+    { "from": "N8", "to": "N7", "weight": 5, "instruction": "Re-enter Hallway B from Exit 2" }
+  ]
+}

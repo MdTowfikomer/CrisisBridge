@@ -1,0 +1,20 @@
+{
+  "name": "@crisisbridge/maps",
+  "version": "1.0.0",
+  "description": "Map data and navigation logic for CrisisBridge",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "dependencies": {
+    "@crisisbridge/types": "workspace:*",
+    "fs-extra": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/fs-extra": "^11.0.0"
+  }
+}

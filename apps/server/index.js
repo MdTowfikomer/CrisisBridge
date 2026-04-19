@@ -1,8 +1,11 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { z, ZodError } from 'zod';
-import { EmergencyAlertSchema } from 'types';
-import { TriageService } from './services/triage.js';
+import dotenv from 'dotenv';
+import { EmergencyAlertSchema } from '@crisisbridge/types';
+import { TriageService } from '@crisisbridge/core';
+import { NavigationService } from '@crisisbridge/maps';
+import { validateConfig } from './services/configValidator.js';
 import { EscalationService } from './services/escalation.js';
 import {
   ProvisioningRequestSchema,
@@ -15,15 +18,21 @@ import {
   getLedgerFilePath,
   verifyIncidentAuditTrail,
 } from './services/auditLedger.js';
-import { NavigationService } from './services/navigation.js';
+
+dotenv.config();
+
+// Pre-flight Config Validation
+const config = validateConfig();
 
 const fastify = Fastify({
   logger: true,
 });
 
 fastify.register(cors, {
-  origin: '*',
+  origin: config.ALLOWED_ORIGINS,
 });
+
+const triageService = new TriageService(config.GEMINI_API_KEY);
 
 const AlertActionSchema = z.object({
   alertId: z.string().trim().min(1),
@@ -56,8 +65,8 @@ fastify.get('/health', async (request, reply) => {
 
 fastify.post('/b2b/properties/:propertyId/provision', async (request, reply) => {
   try {
-    const { propertyId } = PropertyParamsSchema.parse(request.params);
-    const payload = ProvisioningRequestSchema.parse(request.body || {});
+    const { propertyId } = PropertyParamsSchema.parse(request.params);     
+    const payload = ProvisioningRequestSchema.parse(request.body || {});   
     const manifest = await provisionPropertyRooms({ propertyId, payload });
     return { success: true, ...manifest };
   } catch (error) {
@@ -75,8 +84,8 @@ fastify.post('/b2b/properties/:propertyId/provision', async (request, reply) => 
 
 fastify.post('/b2b/properties/:propertyId/provision/csv', async (request, reply) => {
   try {
-    const { propertyId } = PropertyParamsSchema.parse(request.params);
-    const payload = ProvisioningRequestSchema.parse(request.body || {});
+    const { propertyId } = PropertyParamsSchema.parse(request.params);     
+    const payload = ProvisioningRequestSchema.parse(request.body || {});   
     const manifest = await provisionPropertyRooms({ propertyId, payload });
     const csv = buildRoomManifestCsv(manifest);
 
@@ -109,7 +118,7 @@ fastify.post('/triage', async (request, reply) => {
       propertyId: typeof request.body?.property === 'string' ? request.body.property : undefined,
     };
 
-    const triageResult = await TriageService.analyzeAlert(alert);
+    const triageResult = await triageService.analyzeAlert(alert);
     const alertId = parsedAlert.id || `alert-${Date.now()}`;
 
     const escalationTimer = setTimeout(async () => {
@@ -119,7 +128,7 @@ fastify.post('/triage', async (request, reply) => {
       }
 
       try {
-        fastify.log.warn(`Escalating unacknowledged alert: ${alertId}`);
+        fastify.log.warn(`Escalating unacknowledged alert: ${alertId}`);   
         await EscalationService.sendEscalation(storedAlert.alert, storedAlert.triage);
         await appendAuditEvent({
           alertId,
@@ -130,7 +139,7 @@ fastify.post('/triage', async (request, reply) => {
           },
         });
       } catch (error) {
-        fastify.log.error(error, `Escalation flow failed for ${alertId}`);
+        fastify.log.error(error, `Escalation flow failed for ${alertId}`); 
       }
     }, 30000);
 
@@ -200,7 +209,7 @@ fastify.post('/acknowledge', async (request, reply) => {
     }
 
     fastify.log.error(error, 'Acknowledge route failed');
-    return reply.code(500).send({ error: 'Failed to acknowledge alert' });
+    return reply.code(500).send({ error: 'Failed to acknowledge alert' }); 
   }
 });
 
@@ -224,7 +233,7 @@ fastify.post('/resolve', async (request, reply) => {
       actions,
     };
 
-    const aiSummary = await TriageService.generateIncidentSummary(incidentRecord);
+    const aiSummary = await triageService.generateIncidentSummary(incidentRecord);
     incidentRecord.ai_report = aiSummary;
 
     await appendAuditEvent({
@@ -238,7 +247,7 @@ fastify.post('/resolve', async (request, reply) => {
       },
     });
 
-    const auditVerification = await verifyIncidentAuditTrail(alertId);
+    const auditVerification = await verifyIncidentAuditTrail(alertId);     
     fastify.log.info(`Incident finalized with tamper-evident audit trail: ${alertId}`);
     activeAlerts.delete(alertId);
 
@@ -252,7 +261,7 @@ fastify.post('/resolve', async (request, reply) => {
     }
 
     fastify.log.error(error, 'Resolve route failed');
-    return reply.code(500).send({ error: 'Failed to finalize incident' });
+    return reply.code(500).send({ error: 'Failed to finalize incident' }); 
   }
 });
 
@@ -283,13 +292,21 @@ fastify.get('/audit/:alertId', async (request, reply) => {
 
 fastify.post('/navigate', async (request, reply) => {
   try {
-    const { property, from, to, hazards } = request.body || {};
+    const { property, from, to, hazards, mapData } = request.body || {};
     if (!property || !from) {
       return reply.code(400).send({ error: 'property and from fields are required' });
     }
-    const route = await NavigationService.calculateRoute({ property, from, to, hazards: hazards || [] });
+
+    let route;
+    if (mapData) {
+      route = NavigationService.calculateRouteFromData(mapData, { from, to, hazards: hazards || [] });
+    } else {
+      route = await NavigationService.calculateRoute({ property, from, to, hazards: hazards || [] });
+    }
+
     return { success: true, route };
   } catch (error) {
+
     fastify.log.error(error, 'Navigation route failed');
     return reply.code(500).send({ error: error.message || 'Navigation failed' });
   }
@@ -302,20 +319,20 @@ fastify.get('/map/:propertyId', async (request, reply) => {
     return { success: true, map };
   } catch (error) {
     fastify.log.error(error, 'Map route failed');
-    return reply.code(500).send({ error: 'Failed to get map data' });
+    return reply.code(500).send({ error: 'Failed to get map data' });      
   }
 });
 
 fastify.get('/floorplan/:propertyId', async (request, reply) => {
   try {
     const { propertyId } = request.params;
-    const svg = await NavigationService.getFloorplanSvg(propertyId);
+    const svg = await NavigationService.getFloorplanSvg(propertyId);       
     reply.header('Content-Type', 'image/svg+xml');
     reply.header('Cache-Control', 'public, max-age=3600');
     return svg;
   } catch (error) {
     fastify.log.error(error, 'Floorplan route failed');
-    return reply.code(404).send({ error: 'Floor plan not found' });
+    return reply.code(404).send({ error: 'Floor plan not found' });        
   }
 });
 

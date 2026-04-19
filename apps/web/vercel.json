@@ -1,0 +1,15 @@
+{
+  "buildCommand": "cd ../.. && pnpm install && pnpm build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(api|triage|acknowledge|resolve|audit|map|floorplan|b2b)/(.*)",
+      "destination": "https://crisisbridge-server.onrender.com/$1/$2"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

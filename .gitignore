@@ -1,11 +1,55 @@
-/plans*
-/node_modules*
-/apps/web/node_modules*
-/apps/server/node_modules*
-/apps/server/data/*.jsonl
-/packages/types/dist*
-/packages/types/node_modules*
+# 🛡️ CrisisBridge: Production GitIgnore
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+
+# Build Artifacts
+dist/
+dist-ssr/
+*.mjs.map
+*.js.map
+*.d.ts
+/packages/*/dist/
+
+# Environment / Secrets
 .env
 .env.local
 .env.*.local
+*.env
 !.env.example
+
+# IDE / Editor
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS / System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# CrisisBridge Specifics
+/plans/
+/apps/server/data/*.jsonl
+/apps/server/data/ledger_*.json
+/apps/web/public/registerSW.js
+/apps/web/public/sw.js
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+/coverage/
+/.nyc_output/

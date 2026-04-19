@@ -1,17 +1,17 @@
 {
-  "name": "types",
+  "name": "@crisisbridge/types",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Shared TypeScript types and Zod schemas for CrisisBridge",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "dev": "tsc -w"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.15.1",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
   "dependencies": {
-    "zod": "^4.3.6"
-  },
-  "type": "module"
+    "zod": "^3.0.0"
+  }
 }

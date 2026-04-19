@@ -9,30 +9,26 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
   const [floorplanSvg, setFloorplanSvg] = useState('');
   const [loading, setLoading] = useState(true);
   const [hazards, setHazards] = useState({});
-  const [propertyId] = useState('HOTEL-101');
+  const [propertyId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('property') || 'HOTEL-101';
+  });
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // Fetch map + floorplan
+  // Fetch map + floorplan from RTDB
   useEffect(() => {
-    const fetchMap = async () => {
-      try {
-        const [mapRes, svgRes] = await Promise.all([
-          fetch(`${apiBaseUrl}/map/${propertyId}`),
-          fetch(`${apiBaseUrl}/floorplan/${propertyId}`),
-        ]);
-        const mapResult = await mapRes.json();
-        if (mapResult.success) setMapData(mapResult.map);
-
-        if (svgRes.ok) {
-          const svgText = await svgRes.text();
-          setFloorplanSvg(svgText);
-        }
-      } catch (err) {
-        console.error('Failed to load map data:', err);
+    if (!propertyId) return;
+    const mapRef = ref(rtdb, `maps/${propertyId}`);
+    const unsubscribe = onValue(mapRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setMapData(data);
+        setFloorplanSvg(data.svgContent || '');
       }
-    };
-    fetchMap();
-  }, [apiBaseUrl, propertyId]);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [propertyId]);
 
   // Subscribe to live locations & hazards
   useEffect(() => {
