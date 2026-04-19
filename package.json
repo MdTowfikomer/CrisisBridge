@@ -10,7 +10,8 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "@firebase/util",
-      "protobufjs"
+      "protobufjs",
+      "core-js"
     ]
   },
   "scripts": {
