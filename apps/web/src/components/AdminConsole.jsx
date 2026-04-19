@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   MapPin,
   QrCode,
+  Radio,
   Settings,
   ShieldAlert,
   Activity,
