@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { TriageResult } from "@crisisbridge/types";
 
-// Using Gemini 3 Flash for maximum speed and compatibility with the new SDK
-const MODEL_NAME = "gemini-1.5-flash"; // Updated to more stable version string if needed
+// Using the most stable flash model identifier
+const MODEL_NAME = "gemini-1.5-flash-latest"; 
 
 export class TriageService {
   private genAI: GoogleGenerativeAI;

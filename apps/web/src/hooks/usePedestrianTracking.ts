@@ -17,9 +17,32 @@ export function usePedestrianTracking(initialStrideLength = 0.75, mapNodes?: Pos
   // Anchor tracking for dynamic calibration
   const lastAnchorRef = useRef<{ pos: Position, stepsAtScan: number } | null>(null);
 
+  const lastWriteTimeRef = useRef(0);
+  const lastWritePosRef = useRef<Position | null>(null);
+
   useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
+    if (!state.isActive || !state.position) return;
+
+    const syncLocation = async () => {
+      const now = Date.now();
+      const pos = state.position!;
+      
+      // Throttle: Only write if 2 seconds passed OR position moved significantly (>5 units)
+      const timeSinceLastWrite = now - lastWriteTimeRef.current;
+      const movedSignificantly = !lastWritePosRef.current || 
+        Math.sqrt(Math.pow(pos.x - lastWritePosRef.current.x, 2) + Math.pow(pos.y - lastWritePosRef.current.y, 2)) > 5;
+
+      if (timeSinceLastWrite > 2000 || movedSignificantly) {
+        lastWriteTimeRef.current = now;
+        lastWritePosRef.current = pos;
+        
+        // This logic is usually triggered by a listener in a component, 
+        // but we'll add a placeholder for where the throttled sync happens.
+      }
+    };
+
+    syncLocation();
+  }, [state.position, state.isActive]);
 
   const calibrateFromQR = useCallback((qrX: number, qrY: number, qrFloor: number) => {
     const current = stateRef.current;

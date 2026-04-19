@@ -1,16 +1,7 @@
 import crypto from 'node:crypto';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { mkdir, appendFile, readFile } from 'node:fs/promises';
+import { firestore } from '../lib/firebaseAdmin.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const LEDGER_DIR = path.resolve(__dirname, '..', 'data');
-const LEDGER_FILE = path.join(LEDGER_DIR, 'incident-audit-ledger.jsonl');
 const GENESIS_HASH = 'GENESIS';
-
-const lastHashByIncident = new Map();
-let initialized = false;
 
 function canonicalize(value) {
   if (Array.isArray(value)) {
@@ -29,7 +20,7 @@ function canonicalize(value) {
   return value;
 }
 
-function computeEventHash({ alertId, eventType, timestamp, previousHash, payload }) {
+function computeEventHash({ alertId, eventType, timestamp, previousHash, payload }) {        
   const hashPayload = JSON.stringify(canonicalize(payload));
   return crypto
     .createHash('sha256')
@@ -37,47 +28,18 @@ function computeEventHash({ alertId, eventType, timestamp, previousHash, payload
     .digest('hex');
 }
 
-function parseLedgerLines(content) {
-  if (!content.trim()) {
-    return [];
-  }
-
-  return content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => JSON.parse(line));
-}
-
-async function ensureInitialized() {
-  if (initialized) {
-    return;
-  }
-
-  await mkdir(LEDGER_DIR, { recursive: true });
-
-  let content = '';
-  try {
-    content = await readFile(LEDGER_FILE, 'utf8');
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      throw error;
-    }
-  }
-
-  const existingEvents = parseLedgerLines(content);
-  for (const event of existingEvents) {
-    lastHashByIncident.set(event.alertId, event.hash);
-  }
-
-  initialized = true;
-}
-
+/**
+ * Appends an event to the persistent Firestore audit ledger.
+ */
 export async function appendAuditEvent({ alertId, eventType, payload }) {
-  await ensureInitialized();
+  const incidentRef = firestore.collection('audit_ledger').doc(alertId);
+  const eventsRef = incidentRef.collection('events');
+
+  // Get the last hash from the incident's chain
+  const lastEventQuery = await eventsRef.orderBy('timestamp', 'desc').limit(1).get();
+  const previousHash = lastEventQuery.empty ? GENESIS_HASH : lastEventQuery.docs[0].data().hash;
 
   const timestamp = Date.now();
-  const previousHash = lastHashByIncident.get(alertId) || GENESIS_HASH;
   const hash = computeEventHash({
     alertId,
     eventType,
@@ -95,27 +57,35 @@ export async function appendAuditEvent({ alertId, eventType, payload }) {
     hash,
   };
 
-  await appendFile(LEDGER_FILE, `${JSON.stringify(event)}\n`, 'utf8');
-  lastHashByIncident.set(alertId, hash);
+  await eventsRef.add(event);
+
+  // Update root doc for quick lookup of the current state
+  await incidentRef.set({
+    lastUpdated: timestamp,
+    lastHash: hash,
+    eventType
+  }, { merge: true });
 
   return event;
 }
 
+/**
+ * Retrieves the full event chain for a specific incident.
+ */
 export async function getIncidentAuditTrail(alertId) {
-  await ensureInitialized();
+  const snapshot = await firestore
+    .collection('audit_ledger')
+    .doc(alertId)
+    .collection('events')
+    .orderBy('timestamp', 'asc')
+    .get();
 
-  let content = '';
-  try {
-    content = await readFile(LEDGER_FILE, 'utf8');
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      throw error;
-    }
-  }
-
-  return parseLedgerLines(content).filter((event) => event.alertId === alertId);
+  return snapshot.docs.map(doc => doc.data());
 }
 
+/**
+ * Verifies the integrity of the audit chain for an incident.
+ */
 export async function verifyIncidentAuditTrail(alertId) {
   const events = await getIncidentAuditTrail(alertId);
   let previousHash = GENESIS_HASH;
@@ -125,7 +95,7 @@ export async function verifyIncidentAuditTrail(alertId) {
       return {
         valid: false,
         checkedEvents: events.length,
-        failureReason: 'Previous hash mismatch',
+        failureReason: 'Previous hash mismatch (Chain Broken)',
       };
     }
 
@@ -141,7 +111,7 @@ export async function verifyIncidentAuditTrail(alertId) {
       return {
         valid: false,
         checkedEvents: events.length,
-        failureReason: 'Event hash mismatch',
+        failureReason: 'Event hash mismatch (Data Tampered)',
       };
     }
 
@@ -153,8 +123,4 @@ export async function verifyIncidentAuditTrail(alertId) {
     checkedEvents: events.length,
     lastHash: previousHash,
   };
-}
-
-export function getLedgerFilePath() {
-  return LEDGER_FILE;
 }
