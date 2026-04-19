@@ -194,18 +194,32 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
         <main className="flex-1 flex flex-col relative bg-black overflow-hidden">
           {selectedAlert ? (
             <>
-              {/* Tactical Focus Overlay */}
-              <div className="absolute top-4 left-4 right-4 md:left-6 md:top-6 md:w-96 z-30 pointer-events-none">
-                 <div className="bg-[#0c0d12]/90 backdrop-blur-2xl border-2 border-white/10 p-6 rounded-[2.5rem] shadow-2xl pointer-events-auto transition-all">
-                    <div className="flex items-center gap-4 mb-6">
-                       <div className={cn("p-4 rounded-2xl", STATUS_CONFIG[selectedAlert.status].bg)}>
-                          <AlertCircle className={cn("w-7 h-7", STATUS_CONFIG[selectedAlert.status].text)} />
-                       </div>
-                       <div className="min-w-0">
-                          <h2 className="text-2xl font-black tracking-tighter uppercase truncate leading-none mb-1">{selectedAlert.location}</h2>
-                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{selectedAlert.type} MISSION</p>
-                       </div>
-                    </div>
+               {/* Tactical Focus Overlay (Draggable & Dismissible) */}
+               <motion.div 
+                  drag
+                  dragMomentum={false}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="absolute top-6 left-6 z-30 w-96 pointer-events-none"
+               >
+                  <div className="bg-[#0c0d12]/95 backdrop-blur-2xl border-2 border-white/10 p-6 rounded-[2.5rem] shadow-2xl pointer-events-auto transition-all cursor-grab active:cursor-grabbing relative group/card">
+                     {/* Dismiss Button */}
+                     <button 
+                        onClick={() => setSelectedAlertId(null)}
+                        className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all opacity-0 group-hover/card:opacity-100"
+                     >
+                        <CloseIcon className="w-4 h-4" />
+                     </button>
+
+                     <div className="flex items-center gap-4 mb-6 pr-8">
+                        <div className={cn("p-4 rounded-2xl", STATUS_CONFIG[selectedAlert.status].bg)}>
+                           <AlertCircle className={cn("w-7 h-7", STATUS_CONFIG[selectedAlert.status].text)} />
+                        </div>
+                        <div className="min-w-0">
+                           <h2 className="text-2xl font-black tracking-tighter uppercase truncate leading-none mb-1">{selectedAlert.location}</h2>
+                           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{selectedAlert.type} MISSION</p>
+                        </div>
+                     </div>
 
                     <div className="space-y-6">
                        {/* Tactical Directive (Restored & Compacted) */}
