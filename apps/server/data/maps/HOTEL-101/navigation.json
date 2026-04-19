@@ -1,0 +1,107 @@
+{
+  "propertyId": "HOTEL-101",
+  "name": "Grand U-Shaped Hotel",
+  "viewBox": "0 0 1000 800",
+  "nodes": {
+    "M-EXIT": { "id": "M-EXIT", "x": 500, "y": 350, "floor": 1, "label": "Main Exit", "type": "exit" },
+    
+    "C1_MID": { "id": "C1_MID", "x": 500, "y": 275, "floor": 1, "label": "Lobby Center", "type": "path" },
+    "EL_1": { "id": "EL_1", "x": 500, "y": 225, "floor": 1, "label": "Elevator F1", "type": "elevator" },
+    "C1_L": { "id": "C1_L", "x": 175, "y": 275, "floor": 1, "label": "Left Wing F1 Top", "type": "path" },
+    "C1_LB": { "id": "C1_LB", "x": 175, "y": 600, "floor": 1, "label": "Left Wing F1 Bottom", "type": "path" },
+    "S1_1": { "id": "S1_1", "x": 175, "y": 675, "floor": 1, "label": "Stairwell 1 - F1", "type": "stair" },
+    "C1_R": { "id": "C1_R", "x": 825, "y": 275, "floor": 1, "label": "Right Wing F1 Top", "type": "path" },
+    "C1_RB": { "id": "C1_RB", "x": 825, "y": 600, "floor": 1, "label": "Right Wing F1 Bottom", "type": "path" },
+    "S2_1": { "id": "S2_1", "x": 825, "y": 675, "floor": 1, "label": "Stairwell 2 - F1", "type": "stair" },
+
+    "C2_MID": { "id": "C2_MID", "x": 500, "y": 275, "floor": 2, "label": "Center Wing F2", "type": "path" },
+    "EL_2": { "id": "EL_2", "x": 500, "y": 225, "floor": 2, "label": "Elevator F2", "type": "elevator" },
+    "C2_L": { "id": "C2_L", "x": 175, "y": 275, "floor": 2, "label": "Left Wing F2 Top", "type": "path" },
+    "C2_LB": { "id": "C2_LB", "x": 175, "y": 600, "floor": 2, "label": "Left Wing F2 Bottom", "type": "path" },
+    "S1_2": { "id": "S1_2", "x": 175, "y": 675, "floor": 2, "label": "Stairwell 1 - F2", "type": "stair" },
+    "C2_R": { "id": "C2_R", "x": 825, "y": 275, "floor": 2, "label": "Right Wing F2 Top", "type": "path" },
+    "C2_RB": { "id": "C2_RB", "x": 825, "y": 600, "floor": 2, "label": "Right Wing F2 Bottom", "type": "path" },
+    "S2_2": { "id": "S2_2", "x": 825, "y": 675, "floor": 2, "label": "Stairwell 2 - F2", "type": "stair" },
+
+    "C3_MID": { "id": "C3_MID", "x": 500, "y": 275, "floor": 3, "label": "Center Wing F3", "type": "path" },
+    "EL_3": { "id": "EL_3", "x": 500, "y": 225, "floor": 3, "label": "Elevator F3", "type": "elevator" },
+    "C3_L": { "id": "C3_L", "x": 175, "y": 275, "floor": 3, "label": "Left Wing F3 Top", "type": "path" },
+    "C3_LB": { "id": "C3_LB", "x": 175, "y": 600, "floor": 3, "label": "Left Wing F3 Bottom", "type": "path" },
+    "S1_3": { "id": "S1_3", "x": 175, "y": 675, "floor": 3, "label": "Stairwell 1 - F3", "type": "stair" },
+    "C3_R": { "id": "C3_R", "x": 825, "y": 275, "floor": 3, "label": "Right Wing F3 Top", "type": "path" },
+    "C3_RB": { "id": "C3_RB", "x": 825, "y": 600, "floor": 3, "label": "Right Wing F3 Bottom", "type": "path" },
+    "S2_3": { "id": "S2_3", "x": 825, "y": 675, "floor": 3, "label": "Stairwell 2 - F3", "type": "stair" }
+  },
+  "edges": [
+    { "from": "C1_MID", "to": "M-EXIT", "weight": 5, "instruction": "Head to the Main Exit" },
+    { "from": "M-EXIT", "to": "C1_MID", "weight": 5, "instruction": "Enter Lobby Central" },
+
+    { "from": "C1_MID", "to": "EL_1", "weight": 2, "instruction": "Approach the elevator" },
+    { "from": "EL_1", "to": "C1_MID", "weight": 2, "instruction": "Enter Lobby from Elevator" },
+    { "from": "C1_MID", "to": "C1_L", "weight": 10, "instruction": "Turn left into Left Wing" },
+    { "from": "C1_L", "to": "C1_MID", "weight": 10, "instruction": "Head to Lobby Center" },
+    { "from": "C1_MID", "to": "C1_R", "weight": 10, "instruction": "Turn right into Right Wing" },
+    { "from": "C1_R", "to": "C1_MID", "weight": 10, "instruction": "Head to Lobby Center" },
+
+    { "from": "C1_L", "to": "C1_LB", "weight": 10, "instruction": "Walk straight down the Left Wing" },
+    { "from": "C1_LB", "to": "C1_L", "weight": 10, "instruction": "Walk straight up the Left Wing" },
+    { "from": "C1_LB", "to": "S1_1", "weight": 5, "instruction": "Enter Stairwell 1" },
+    { "from": "S1_1", "to": "C1_LB", "weight": 5, "instruction": "Exit Stairwell 1 to Left Wing F1" },
+
+    { "from": "C1_R", "to": "C1_RB", "weight": 10, "instruction": "Walk straight down the Right Wing" },
+    { "from": "C1_RB", "to": "C1_R", "weight": 10, "instruction": "Walk straight up the Right Wing" },
+    { "from": "C1_RB", "to": "S2_1", "weight": 5, "instruction": "Enter Stairwell 2" },
+    { "from": "S2_1", "to": "C1_RB", "weight": 5, "instruction": "Exit Stairwell 2 to Right Wing F1" },
+
+    { "from": "C2_MID", "to": "EL_2", "weight": 2, "instruction": "Approach the elevator" },
+    { "from": "EL_2", "to": "C2_MID", "weight": 2, "instruction": "Exit elevator, turn into center hallway" },
+    { "from": "C2_MID", "to": "C2_L", "weight": 10, "instruction": "Turn left into Left Wing" },
+    { "from": "C2_L", "to": "C2_MID", "weight": 10, "instruction": "Head to Center Wing" },
+    { "from": "C2_MID", "to": "C2_R", "weight": 10, "instruction": "Turn right into Right Wing" },
+    { "from": "C2_R", "to": "C2_MID", "weight": 10, "instruction": "Head to Center Wing" },
+    
+    { "from": "C2_L", "to": "C2_LB", "weight": 10, "instruction": "Walk straight down the Left Wing" },
+    { "from": "C2_LB", "to": "C2_L", "weight": 10, "instruction": "Walk straight up the Left Wing" },
+    { "from": "C2_LB", "to": "S1_2", "weight": 5, "instruction": "Enter Stairwell 1 on F2" },
+    { "from": "S1_2", "to": "C2_LB", "weight": 5, "instruction": "Exit Stairwell 1 to Left Wing F2" },
+
+    { "from": "C2_R", "to": "C2_RB", "weight": 10, "instruction": "Walk straight down the Right Wing" },
+    { "from": "C2_RB", "to": "C2_R", "weight": 10, "instruction": "Walk straight up the Right Wing" },
+    { "from": "C2_RB", "to": "S2_2", "weight": 5, "instruction": "Enter Stairwell 2 on F2" },
+    { "from": "S2_2", "to": "C2_RB", "weight": 5, "instruction": "Exit Stairwell 2 to Right Wing F2" },
+
+    { "from": "C3_MID", "to": "EL_3", "weight": 2, "instruction": "Approach the elevator" },
+    { "from": "EL_3", "to": "C3_MID", "weight": 2, "instruction": "Exit elevator, turn into center hallway" },
+    { "from": "C3_MID", "to": "C3_L", "weight": 10, "instruction": "Turn left into Left Wing" },
+    { "from": "C3_L", "to": "C3_MID", "weight": 10, "instruction": "Head to Center Wing" },
+    { "from": "C3_MID", "to": "C3_R", "weight": 10, "instruction": "Turn right into Right Wing" },
+    { "from": "C3_R", "to": "C3_MID", "weight": 10, "instruction": "Head to Center Wing" },
+    
+    { "from": "C3_L", "to": "C3_LB", "weight": 10, "instruction": "Walk straight down the Left Wing" },
+    { "from": "C3_LB", "to": "C3_L", "weight": 10, "instruction": "Walk straight up the Left Wing" },
+    { "from": "C3_LB", "to": "S1_3", "weight": 5, "instruction": "Enter Stairwell 1 on F3" },
+    { "from": "S1_3", "to": "C3_LB", "weight": 5, "instruction": "Exit Stairwell 1 to Left Wing F3" },
+
+    { "from": "C3_R", "to": "C3_RB", "weight": 10, "instruction": "Walk straight down the Right Wing" },
+    { "from": "C3_RB", "to": "C3_R", "weight": 10, "instruction": "Walk straight up the Right Wing" },
+    { "from": "C3_RB", "to": "S2_3", "weight": 5, "instruction": "Enter Stairwell 2 on F3" },
+    { "from": "S2_3", "to": "C3_RB", "weight": 5, "instruction": "Exit Stairwell 2 to Right Wing F3" },
+
+    { "from": "S1_1", "to": "S1_2", "weight": 20, "instruction": "Take Stairwell 1 up to Floor 2" },
+    { "from": "S1_2", "to": "S1_1", "weight": 20, "instruction": "Take Stairwell 1 down to Floor 1" },
+    { "from": "S1_2", "to": "S1_3", "weight": 20, "instruction": "Take Stairwell 1 up to Floor 3" },
+    { "from": "S1_3", "to": "S1_2", "weight": 20, "instruction": "Take Stairwell 1 down to Floor 2" },
+
+    { "from": "S2_1", "to": "S2_2", "weight": 20, "instruction": "Take Stairwell 2 up to Floor 2" },
+    { "from": "S2_2", "to": "S2_1", "weight": 20, "instruction": "Take Stairwell 2 down to Floor 1" },
+    { "from": "S2_2", "to": "S2_3", "weight": 20, "instruction": "Take Stairwell 2 up to Floor 3" },
+    { "from": "S2_3", "to": "S2_2", "weight": 20, "instruction": "Take Stairwell 2 down to Floor 2" },
+
+    { "from": "EL_1", "to": "EL_2", "weight": 15, "instruction": "Take elevator up to Floor 2" },
+    { "from": "EL_2", "to": "EL_1", "weight": 15, "instruction": "Take elevator down to Floor 1" },
+    { "from": "EL_1", "to": "EL_3", "weight": 15, "instruction": "Take elevator up to Floor 3" },
+    { "from": "EL_3", "to": "EL_1", "weight": 15, "instruction": "Take elevator down to Floor 1" },
+    { "from": "EL_2", "to": "EL_3", "weight": 15, "instruction": "Take elevator up to Floor 3" },
+    { "from": "EL_3", "to": "EL_2", "weight": 15, "instruction": "Take elevator down to Floor 2" }
+  ]
+}
