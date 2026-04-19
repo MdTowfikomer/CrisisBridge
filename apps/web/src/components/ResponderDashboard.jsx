@@ -208,12 +208,13 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
                     </div>
 
                     <div className="space-y-6">
-                       <div className="bg-black/60 border border-white/5 rounded-2xl p-5 shadow-inner">
-                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                             <Radio className="w-3 h-3" /> AI Triage Intelligence
+                       {/* Tactical Directive (Restored & Compacted) */}
+                       <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 -mt-2 shadow-inner">
+                          <p className="text-[8px] font-black text-blue-400 uppercase tracking-[0.3em] mb-1.5 flex items-center gap-1.5">
+                             <Radio className="w-2.5 h-2.5" /> AI Command Directive
                           </p>
-                          <p className="text-base font-medium leading-relaxed italic text-blue-100">
-                            "{selectedAlert.triage?.immediate_action || 'Processing mission parameters...'}"
+                          <p className="text-sm font-bold text-slate-100 leading-tight italic">
+                            "{selectedAlert.triage?.immediate_action || 'Standby for mission parameters...'}"
                           </p>
                        </div>
 
