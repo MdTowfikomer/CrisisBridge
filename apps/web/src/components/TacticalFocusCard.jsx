@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, Radio, Navigation, CheckCircle2, X as CloseIcon } from 'lucide-react';
+import { AlertCircle, Radio, Navigation, CheckCircle2, X as CloseIcon, FileDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -74,27 +74,39 @@ export const TacticalFocusCard = ({ alert, onAction, onDismiss }) => {
             </p>
           </div>
 
-          {alert.status !== 'RESOLVED' && (
-            <div className="grid grid-cols-1 gap-3">
-              {alert.status === 'PENDING' ? (
-                <button
-                  onClick={() => onAction(alert.dbKey, 'ACKNOWLEDGED')}
-                  className="w-full bg-blue-600 hover:bg-blue-500 py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-2xl shadow-blue-600/30 transition-all active:scale-95 group"
-                >
-                  <Navigation className="w-4 h-4 group-hover:animate-bounce" />
-                  Begin Response
-                </button>
-              ) : (
-                <button
-                  onClick={() => onAction(alert.dbKey, 'RESOLVED')}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-2xl shadow-emerald-600/20 transition-all active:scale-95 group"
-                >
-                  <CheckCircle2 className="w-4 h-4 group-hover:scale-125 transition-transform" />
-                  Incident Resolved
-                </button>
-              )}
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-3">
+            {alert.status === 'RESOLVED' && (
+              <a
+                href={`${import.meta.env.VITE_BACKEND_URL}/audit/${alert.id || alert.dbKey}/pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-xl transition-all active:scale-95"
+              >
+                <FileDown className="w-4 h-4 text-blue-400" />
+                Download Formal Report
+              </a>
+            )}
+
+            {alert.status === 'PENDING' && (
+              <button
+                onClick={() => onAction(alert.dbKey, 'ACKNOWLEDGED')}
+                className="w-full bg-blue-600 hover:bg-blue-500 py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-2xl shadow-blue-600/30 transition-all active:scale-95 group"
+              >
+                <Navigation className="w-4 h-4 group-hover:animate-bounce" />
+                Begin Response
+              </button>
+            )}
+
+            {alert.status === 'ACKNOWLEDGED' && (
+              <button
+                onClick={() => onAction(alert.dbKey, 'RESOLVED')}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-2xl shadow-emerald-600/20 transition-all active:scale-95 group"
+              >
+                <CheckCircle2 className="w-4 h-4 group-hover:scale-125 transition-transform" />
+                Incident Resolved
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>

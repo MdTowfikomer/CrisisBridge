@@ -117,6 +117,7 @@ function App() {
       status: 'PENDING',
       entryMethod,
       property: propertyId,
+      language: navigator.language || 'en'
     };
 
     setSubmitError('');

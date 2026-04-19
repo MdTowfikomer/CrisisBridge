@@ -14,7 +14,7 @@ export class TriageService {
   /**
    * Analyzes an emergency description and returns structured triage data.
    */
-  async analyzeAlert(alert: any): Promise<TriageResult> {
+  async analyzeAlert(alert: any, targetLanguage: string = 'en'): Promise<TriageResult> {
     const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
 
     const prompt = `
@@ -24,12 +24,15 @@ export class TriageService {
       GUEST INPUT: "${alert.description || 'No description provided'}"
       EMERGENCY TYPE: ${alert.type}
       LOCATION: ${alert.location}
+      TARGET LANGUAGE: ${targetLanguage}
 
-      Respond with ONLY a JSON object containing these fields:
+      Respond with ONLY a JSON object containing these fields. 
+      CRITICAL: The fields "classification", "immediate_action", and "task_card" contents MUST be in the TARGET LANGUAGE (${targetLanguage}).
+
       - severity: "CRITICAL", "HIGH", "MEDIUM", or "LOW"
-      - classification: A short specific category (e.g., "Cardiac Arrest", "Kitchen Fire", "Physical Altercation")
-      - immediate_action: One sentence instruction for the first responder on site.
-      - task_card: An object with { title, action_item } for a staff task list.
+      - classification: A short specific category in ${targetLanguage}
+      - immediate_action: One sentence instruction for the first responder in ${targetLanguage}
+      - task_card: An object with { title, action_item } in ${targetLanguage}
       - requires_ems: boolean (true if professional emergency services like 911 are needed)  
     `;
 

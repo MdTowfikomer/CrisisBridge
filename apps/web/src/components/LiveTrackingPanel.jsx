@@ -1,7 +1,43 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { ref, onValue, set } from 'firebase/database';
+import React, { useEffect, useState, useMemo } from 'react';
+import { ref, onValue } from 'firebase/database';
 import { rtdb } from '../lib/firebase';
-import { MapPin, Users, Flame, Shield, Radio, Eye } from 'lucide-react';
+import { MapPin, Users, Flame, Shield, Radio, Eye, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const UserGroupMarker = ({ x, y, count, status, isSelected, onClick }) => {
+  const isEmergency = status === 'evacuating';
+  
+  return (
+    <motion.g 
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      onClick={onClick}
+      className="cursor-pointer group"
+    >
+      <motion.circle
+        cx={x} cy={y} r={count > 1 ? 16 : 12}
+        fill={isEmergency ? '#ef4444' : '#3b82f6'}
+        initial={{ opacity: 0.2 }}
+        animate={{ opacity: [0.1, 0.3, 0.1] }}
+        transition={{ repeat: Infinity, duration: 2 }}
+      />
+      <circle
+        cx={x} cy={y} r={count > 1 ? 10 : 8}
+        fill={isEmergency ? '#ef4444' : '#3b82f6'}
+        className={isSelected ? "stroke-white stroke-[3px]" : "stroke-transparent"}
+      />
+      {count > 1 && (
+        <text 
+          x={x} y={y + 4} 
+          fontSize="10" fill="white" textAnchor="middle" 
+          className="font-black pointer-events-none"
+        >
+          {count}
+        </text>
+      )}
+    </motion.g>
+  );
+};
 
 export function LiveTrackingPanel({ apiBaseUrl }) {
   const [locations, setLocations] = useState({});
@@ -9,346 +45,163 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
   const [floorplanSvg, setFloorplanSvg] = useState('');
   const [loading, setLoading] = useState(true);
   const [hazards, setHazards] = useState({});
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+
   const [propertyId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('property') || 'HOTEL-101';
   });
-  const [selectedUser, setSelectedUser] = useState(null);
 
-  // Fetch map + floorplan from RTDB
   useEffect(() => {
     if (!propertyId) return;
+    
+    // Load Map
     const mapRef = ref(rtdb, `maps/${propertyId}`);
-    const unsubscribe = onValue(mapRef, (snapshot) => {
-      const data = snapshot.val();
+    const unsubMap = onValue(mapRef, (snap) => {
+      const data = snap.val();
       if (data) {
         setMapData(data);
         setFloorplanSvg(data.svgContent || '');
       }
+    });
+
+    // Load Live Data
+    const locRef = ref(rtdb, 'liveLocations');
+    const unsubLoc = onValue(locRef, (snap) => {
+      const data = snap.val() || {};
+      // Filter for current property
+      const filtered = Object.entries(data)
+        .filter(([_, loc]) => loc.property === propertyId)
+        .reduce((acc, [id, loc]) => ({ ...acc, [id]: loc }), {});
+      setLocations(filtered);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const hazRef = ref(rtdb, `hazards/${propertyId}`);
+    const unsubHaz = onValue(hazRef, (snap) => setHazards(snap.val() || {}));
+
+    return () => { unsubMap(); unsubLoc(); unsubHaz(); };
   }, [propertyId]);
 
-  // Subscribe to live locations & hazards
-  useEffect(() => {
-    const locationsRef = ref(rtdb, 'liveLocations');
-    const unsubLoc = onValue(locationsRef, (snapshot) => {
-      setLocations(snapshot.val() || {});
-      setLoading(false);
+  // Spatial Grouping Logic
+  const groupedUsers = useMemo(() => {
+    const groups = {};
+    Object.entries(locations).forEach(([id, loc]) => {
+      const key = `${Math.round(loc.x)},${Math.round(loc.y)}`;
+      if (!groups[key]) {
+        groups[key] = { x: loc.x, y: loc.y, users: [], status: loc.status };
+      }
+      groups[key].users.push({ id, ...loc });
+      if (loc.status === 'evacuating') groups[key].status = 'evacuating';
     });
+    return groups;
+  }, [locations]);
 
-    const hazardsRef = ref(rtdb, `hazards/${propertyId}`);
-    const unsubHaz = onValue(hazardsRef, (snapshot) => {
-      setHazards(snapshot.val() || {});
-    });
+  if (loading) return (
+    <div className="h-full flex flex-col items-center justify-center text-slate-500">
+      <Loader2 className="w-10 h-10 animate-spin mb-4" />
+      <p className="font-black uppercase tracking-widest text-xs">Establishing Tactical Link...</p>
+    </div>
+  );
 
-    return () => {
-      unsubLoc();
-      unsubHaz();
-    };
-  }, [propertyId]);
-
-  const toggleHazard = async (nodeId) => {
-    const isCurrentHazard = hazards[nodeId] === true;
-    const hazardRef = ref(rtdb, `hazards/${propertyId}/${nodeId}`);
-    await set(hazardRef, !isCurrentHazard);
-  };
-
-  const activeUsers = Object.entries(locations).filter(([, l]) => l.status === 'evacuating');
-  const evacuatedUsers = Object.entries(locations).filter(([, l]) => l.status === 'evacuated');
-  const hazardCount = Object.keys(hazards).filter((k) => hazards[k]).length;
-
-  const viewBox = mapData?.viewBox || '0 0 800 500';
+  const viewBox = mapData?.viewBox || "0 0 1000 800";
 
   return (
-    <div className="space-y-4">
-      {/* ── Header Panel ── */}
-      <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-[hsl(222,28%,14%)] to-[hsl(224,35%,10%)] p-5 shadow-lg sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400">
-                Tactical Oversight — Live
-              </p>
-            </div>
-            <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-              CAD Floor Plan — Real-Time Tracking
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              Click any node to toggle hazard status. Guest positions update in real-time as they navigate.
-            </p>
-          </div>
+    <div className="h-full flex flex-col md:flex-row gap-6 p-6 animate-in fade-in duration-500">
+      
+      {/* ── Tactical Map ── */}
+      <div className="flex-1 bg-slate-950 rounded-[2.5rem] border-2 border-white/5 overflow-hidden relative shadow-2xl">
+        <svg viewBox={viewBox} className="w-full h-full p-10">
+          <defs>
+            <filter id="radar-glow"><feGaussianBlur stdDeviation="15" result="blur"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
 
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-[11px] font-bold uppercase tracking-wider">
-              <Flame className="w-3.5 h-3.5 text-red-400" />
-              <span className="text-red-300">{hazardCount} Hazard{hazardCount !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] font-bold uppercase tracking-wider">
-              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-amber-300">{activeUsers.length} Evacuating</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[11px] font-bold uppercase tracking-wider">
-              <Shield className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-300">{evacuatedUsers.length} Safe</span>
-            </div>
-          </div>
+          {/* Radar Sweep Animation */}
+          <motion.circle 
+            cx="50%" cy="50%" r="40%" 
+            fill="none" stroke="#3b82f6" strokeWidth="2" 
+            initial={{ scale: 0, opacity: 0.5 }}
+            animate={{ scale: 2, opacity: 0 }}
+            transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+          />
+
+          {floorplanSvg && <g dangerouslySetInnerHTML={{ __html: floorplanSvg.replace(/<\/?svg[^>]*>/gi, '') }} className="opacity-20" />}
+
+          {/* Render Spatial Groups */}
+          {Object.entries(groupedUsers).map(([key, group]) => (
+            <UserGroupMarker 
+              key={key}
+              x={group.x} y={group.y}
+              count={group.users.length}
+              status={group.status}
+              isSelected={selectedGroupId === key}
+              onClick={() => setSelectedGroupId(key)}
+            />
+          ))}
+
+          {/* Hazards */}
+          {Object.entries(hazards).map(([nodeId, active]) => {
+            const node = mapData?.nodes[nodeId];
+            if (!node || !active) return null;
+            return (
+              <g key={nodeId}>
+                <motion.circle 
+                  cx={node.x} cy={node.y} r="20" 
+                  fill="#ef4444" opacity="0.1" 
+                  animate={{ r: [20, 30, 20] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                />
+                <Flame className="w-4 h-4 text-red-500" x={node.x - 8} y={node.y - 8} />
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Map HUD */}
+        <div className="absolute top-6 left-6 flex items-center gap-3">
+           <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3">
+              <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Active Tracking: {Object.keys(locations).length} Souls</span>
+           </div>
         </div>
       </div>
 
-      {/* ── Map Container ── */}
-      <div className="rounded-2xl border border-slate-700/50 bg-[hsl(224,45%,5%)] shadow-2xl relative overflow-hidden">
-        {/* Legend */}
-        <div className="absolute top-4 left-4 z-10 bg-slate-900/90 backdrop-blur-md rounded-lg border border-slate-700/50 px-3 py-3 space-y-2 pointer-events-none">
-          <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-1.5">Legend</p>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500/80 shadow-[0_0_6px_rgba(16,185,129,0.4)]" />
-            <span className="text-[9px] text-slate-400 font-medium">Exit</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-slate-600" />
-            <span className="text-[9px] text-slate-400 font-medium">Room / Checkpoint</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500/60 border border-red-500/40 animate-pulse" />
-            <span className="text-[9px] text-slate-400 font-medium">Hazard Zone</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
-            <span className="text-[9px] text-slate-400 font-medium">Guest (Evacuating)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-400" />
-            <span className="text-[9px] text-slate-400 font-medium">Guest (Safe)</span>
-          </div>
-        </div>
-
-        {(!mapData || loading) ? (
-          <div className="py-28 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-cyan-400 border-t-transparent mb-4" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              Loading CAD Floor Plan...
-            </p>
-          </div>
-        ) : (
-          <div className="relative w-full overflow-hidden" style={{ minHeight: '550px' }}>
-            <svg
-              viewBox={viewBox}
-              className="w-full h-full"
-              style={{ minHeight: '550px' }}
-              preserveAspectRatio="xMidYMid meet"
-            >
-              <defs>
-                {/* Glow filters */}
-                <filter id="adminNodeGlow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-                <filter id="adminUserGlow" x="-100%" y="-100%" width="300%" height="300%">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feFlood floodColor="#f59e0b" floodOpacity="0.5" />
-                  <feComposite in2="blur" operator="in" />
-                  <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-                <filter id="adminSafeGlow" x="-100%" y="-100%" width="300%" height="300%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
-                  <feFlood floodColor="#10b981" floodOpacity="0.4" />
-                  <feComposite in2="blur" operator="in" />
-                  <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-              </defs>
-
-              {/* ── CAD Floor Plan Background ── */}
-              {floorplanSvg && (
-                <g dangerouslySetInnerHTML={{ __html: floorplanSvg.replace(/<\/?svg[^>]*>/gi, '') }} />
-              )}
-
-              {/* ── Map Edges (corridors / connections) ── */}
-              {mapData.edges.map((e, idx) => {
-                const from = mapData.nodes[e.from];
-                const to = mapData.nodes[e.to];
-                const isHazard = hazards[e.from] || hazards[e.to];
-                return (
-                  <line
-                    key={`e-${idx}`}
-                    x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                    stroke={isHazard ? '#ef4444' : '#1e3a5f'}
-                    strokeWidth={isHazard ? '6' : '3'}
-                    opacity={isHazard ? '0.6' : '0.25'}
-                    strokeLinecap="round"
-                  />
-                );
-              })}
-
-              {/* ── Map Nodes (interactive) ── */}
-              {Object.values(mapData.nodes).map((node) => {
-                const isExit = node.type === 'exit';
-                const isHazard = hazards[node.id];
-                return (
-                  <g
-                    key={node.id}
-                    className="cursor-pointer"
-                    onClick={() => toggleHazard(node.id)}
-                  >
-                    {/* Hazard ring */}
-                    {isHazard && (
-                      <>
-                        <circle cx={node.x} cy={node.y} r="28" fill="rgba(239,68,68,0.06)" stroke="rgba(239,68,68,0.2)" strokeWidth="1.5" className="animate-pulse" />
-                        <circle cx={node.x} cy={node.y} r="18" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.4)" strokeWidth="1" />
-                      </>
-                    )}
-                    {/* Exit glow */}
-                    {isExit && !isHazard && (
-                      <circle cx={node.x} cy={node.y} r="16" fill="rgba(16,185,129,0.06)" stroke="rgba(16,185,129,0.2)" strokeWidth="1" />
-                    )}
-                    {/* Node */}
-                    <circle
-                      cx={node.x} cy={node.y}
-                      r={isExit ? '9' : '7'}
-                      fill={isHazard ? '#ef4444' : isExit ? '#10b981' : '#475569'}
-                      filter={isExit ? 'url(#adminNodeGlow)' : undefined}
-                      className="hover:opacity-80 transition-opacity"
-                    />
-                    {/* Label */}
-                    <text
-                      x={node.x} y={node.y + (isExit ? 22 : 20)}
-                      fill={isHazard ? '#f87171' : isExit ? '#10b981' : '#64748b'}
-                      fontSize="9"
-                      textAnchor="middle"
-                      fontFamily="monospace"
-                      fontWeight="600"
-                    >
-                      {node.label}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* ── Live Tracking — Guest Markers ── */}
-              {Object.entries(locations).map(([uid, loc]) => {
-                const isSafe = loc.status === 'evacuated';
-                const isSelected = selectedUser === uid;
-                return (
-                  <g
-                    key={uid}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedUser(isSelected ? null : uid)}
-                    style={{ transition: 'all 0.8s ease-out' }}
-                  >
-                    {/* Outer pulse */}
-                    <circle
-                      cx={loc.x} cy={loc.y}
-                      r={isSelected ? '24' : '18'}
-                      fill={isSafe ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)'}
-                      stroke={isSafe ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}
-                      strokeWidth="1"
-                      className={isSafe ? '' : 'animate-ping'}
-                      style={isSafe ? {} : { animationDuration: '2s' }}
-                    />
-                    {/* Glow disc */}
-                    <circle
-                      cx={loc.x} cy={loc.y}
-                      r="12"
-                      fill={isSafe ? '#10b981' : '#f59e0b'}
-                      filter={isSafe ? 'url(#adminSafeGlow)' : 'url(#adminUserGlow)'}
-                      opacity="0.9"
-                    />
-                    {/* Inner dot */}
-                    <circle
-                      cx={loc.x} cy={loc.y}
-                      r="5"
-                      fill="#fff"
-                    />
-                    {/* Label */}
-                    <text
-                      x={loc.x} y={loc.y - 18}
-                      fill={isSafe ? '#10b981' : '#f59e0b'}
-                      fontSize="9"
-                      textAnchor="middle"
-                      fontFamily="monospace"
-                      fontWeight="700"
-                    >
-                      {isSafe ? '✓ Safe' : '● Guest'}
-                    </text>
-                    {/* User ID on selection */}
-                    {isSelected && (
-                      <>
-                        <rect
-                          x={loc.x - 45} y={loc.y + 18}
-                          width="90" height="22" rx="4"
-                          fill="rgba(15,23,42,0.9)"
-                          stroke={isSafe ? '#10b981' : '#f59e0b'}
-                          strokeWidth="1"
-                        />
-                        <text
-                          x={loc.x} y={loc.y + 33}
-                          fill="#94a3b8"
-                          fontSize="8"
-                          textAnchor="middle"
-                          fontFamily="monospace"
-                        >
-                          {uid.substring(0, 16)}
-                        </text>
-                      </>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        )}
-      </div>
-
-      {/* ── Guest Table ── */}
-      {Object.keys(locations).length > 0 && (
-        <div className="rounded-2xl border border-slate-700/50 bg-[hsl(222,28%,14%)] p-5 shadow-lg">
-          <div className="flex items-center gap-2 mb-4">
-            <Eye className="w-4 h-4 text-slate-500" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              Active Guest Sessions
-            </p>
-          </div>
-          <div className="grid gap-2">
-            {Object.entries(locations).map(([uid, loc]) => {
-              const isSafe = loc.status === 'evacuated';
-              const nodeLabel = mapData?.nodes?.[loc.currentNodeId]?.label || 'Unknown';
-              const timeAgo = Math.round((Date.now() - (loc.lastUpdated || 0)) / 1000);
-              return (
-                <div
-                  key={uid}
-                  className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
-                    isSafe
-                      ? 'border-emerald-500/20 bg-emerald-500/5'
-                      : 'border-amber-500/20 bg-amber-500/5'
+      {/* ── Group Detail Sidebar ── */}
+      <aside className="w-full md:w-80 flex flex-col gap-6">
+        <div className="bg-slate-900 border-2 border-white/5 rounded-[2rem] p-6 shadow-xl flex-1 overflow-hidden flex flex-col">
+           <div className="flex items-center gap-3 border-b border-white/5 pb-4 mb-6">
+              <Users className="w-5 h-5 text-blue-400" />
+              <h3 className="font-black uppercase tracking-tighter text-white">Zone Inventory</h3>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+              {Object.entries(groupedUsers).map(([key, group]) => (
+                <button 
+                  key={key}
+                  onClick={() => setSelectedGroupId(key)}
+                  className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
+                    selectedGroupId === key ? "bg-blue-600/10 border-blue-500" : "bg-white/5 border-transparent hover:bg-white/10"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2.5 h-2.5 rounded-full ${isSafe ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-                    <div>
-                      <p className="text-xs font-semibold text-white">{uid.substring(0, 16)}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        At: <span className="text-slate-300">{nodeLabel}</span> · Floor {loc.floor}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`inline-block px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider ${
-                      isSafe
-                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25'
-                        : 'bg-amber-500/15 text-amber-300 border border-amber-500/25'
-                    }`}>
-                      {isSafe ? 'Evacuated' : 'In Progress'}
-                    </span>
-                    <p className="text-[9px] text-slate-600 mt-1">{timeAgo}s ago</p>
-                  </div>
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Zone {key}</span>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${group.status === 'evacuating' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}>
+                        {group.status}
+                      </span>
+                   </div>
+                   <p className="font-black text-white">{group.users.length} Guest{group.users.length > 1 ? 's' : ''}</p>
+                </button>
+              ))}
+              
+              {Object.keys(groupedUsers).length === 0 && (
+                <div className="text-center py-20 opacity-20">
+                   <Users className="w-12 h-12 mx-auto mb-4" />
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Active Transmissions</p>
                 </div>
-              );
-            })}
-          </div>
+              )}
+           </div>
         </div>
-      )}
+      </aside>
     </div>
   );
 }

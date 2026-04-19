@@ -19,6 +19,8 @@ import {
 } from './services/auditLedger.js';
 
 import { rtdbAdmin } from './lib/firebaseAdmin.js';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 dotenv.config();
 
@@ -122,7 +124,8 @@ fastify.post('/triage', async (request, reply) => {
       propertyId: request.body?.property || 'UNKNOWN',
     };
 
-    const triageResult = await triageService.analyzeAlert(alert);
+    const targetLanguage = request.body?.language || 'en';
+    const triageResult = await triageService.analyzeAlert(alert, targetLanguage);
     const alertsRef = rtdbAdmin.ref('alerts');
     const newAlertRef = alertsRef.push();
     const alertId = newAlertRef.key;
@@ -177,7 +180,7 @@ fastify.post('/resolve', async (request, reply) => {
   try {
     const { alertId, summary, actions } = ResolveAlertSchema.parse(request.body);
     const alertRef = rtdbAdmin.ref(`alerts/${alertId}`);
-    
+
     const snap = await alertRef.once('value');
     if (!snap.exists()) return reply.code(404).send({ error: 'Alert not found' });
 
@@ -192,10 +195,10 @@ fastify.post('/resolve', async (request, reply) => {
 
     const aiSummary = await triageService.generateIncidentSummary(incidentRecord);
     
-    await alertRef.update({ 
-      status: 'RESOLVED', 
+    await alertRef.update({
+      status: 'RESOLVED',
       resolvedAt: incidentRecord.resolvedAt,
-      ai_report: aiSummary 
+      ai_report: aiSummary
     });
 
     await appendAuditEvent({
@@ -210,10 +213,87 @@ fastify.post('/resolve', async (request, reply) => {
   }
 });
 
+fastify.get('/audit/:alertId', async (request, reply) => {
+  try {
+    const { alertId } = AlertActionSchema.parse(request.params);
+    const events = await getIncidentAuditTrail(alertId);
+    const verification = await verifyIncidentAuditTrail(alertId);
+
+    return {
+      success: true,
+      alertId,
+      events,
+      verification,
+    };
+  } catch (error) {
+    fastify.log.error(error);
+    return reply.code(500).send({ error: 'Failed to retrieve audit trail' });
+  }
+});
+
+fastify.get('/audit/:alertId/pdf', async (request, reply) => {
+  try {
+    const { alertId } = AlertActionSchema.parse(request.params);
+    const events = await getIncidentAuditTrail(alertId);
+    const verification = await verifyIncidentAuditTrail(alertId);
+
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.text('CrisisBridge: Formal Incident Report', 20, 20);
+    doc.setFontSize(10);
+    doc.text(`Incident ID: ${alertId}`, 20, 30);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 35);
+    doc.text(`Integrity Status: ${verification.valid ? 'VERIFIED' : 'TAMPERED'}`, 20, 40);
+
+    // Summary Section
+    const resolvedEvent = events.find(e => e.eventType === 'RESOLVED');
+    const triggerEvent = events.find(e => e.eventType === 'TRIGGERED');
+
+    if (triggerEvent) {
+      doc.setFontSize(14);
+      doc.text('Executive Summary', 20, 55);
+      doc.setFontSize(10);
+      doc.text(`Location: ${triggerEvent.payload.alert.location}`, 20, 65);
+      doc.text(`Type: ${triggerEvent.payload.alert.type}`, 20, 70);
+      doc.text(`Description: ${triggerEvent.payload.alert.description || 'N/A'}`, 20, 75);
+    }
+
+    if (resolvedEvent) {
+      doc.text(`Resolution: ${resolvedEvent.payload.summary}`, 20, 85);
+      doc.text(`AI Summary: ${resolvedEvent.payload.ai_report}`, 20, 90, { maxWidth: 170 });
+    }
+
+    // Audit Table
+    const tableData = events.map(e => [
+      new Date(e.timestamp).toLocaleTimeString(),
+      e.eventType,
+      e.hash.substring(0, 12) + '...',
+      JSON.stringify(e.payload).substring(0, 50) + '...'
+    ]);
+
+    doc.autoTable({
+      startY: 110,
+      head: [['Time', 'Event', 'SHA-256 Hash', 'Payload Extract']],
+      body: tableData,
+    });
+
+    const pdfBuffer = doc.output('arraybuffer');
+    
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `attachment; filename="incident-${alertId}.pdf"`);
+    return Buffer.from(pdfBuffer);
+  } catch (error) {
+    fastify.log.error(error);
+    return reply.code(500).send({ error: 'Failed to generate PDF report' });
+  }
+});
+
 fastify.post('/navigate', async (request, reply) => {
   try {
     const { property, from, to, hazards, mapData } = request.body || {};
-    const route = mapData 
+    const route = mapData
       ? NavigationService.calculateRouteFromData(mapData, { from, to, hazards: hazards || [] })
       : await NavigationService.calculateRoute({ property, from, to, hazards: hazards || [] });
     return { success: true, route };
