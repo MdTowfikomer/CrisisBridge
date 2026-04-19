@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ref, onValue, update } from 'firebase/database';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertCircle,
   BellRing,
