@@ -18,7 +18,7 @@ function initializeFirebase() {
       const serviceAccount = JSON.parse(serviceAccountVar);
       return admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        databaseURL: process.env.VITE_FIREBASE_DATABASE_URL
+        databaseURL: process.env.FIREBASE_DATABASE_URL
       });
     } catch (e) {
       console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT. Falling back to default.');
@@ -28,7 +28,7 @@ function initializeFirebase() {
   // Fallback to Application Default Credentials (good for local dev)
   return admin.initializeApp({
     credential: admin.credential.applicationDefault(),
-    databaseURL: process.env.VITE_FIREBASE_DATABASE_URL
+    databaseURL: process.env.FIREBASE_DATABASE_URL
   });
 }
 

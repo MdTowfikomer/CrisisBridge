@@ -16,6 +16,7 @@ export const ConfigSchema = z.object({
   // External Services
   GEMINI_API_KEY: z.string().min(1, "Gemini API Key is mandatory for AI Triage"),
   SENDGRID_API_KEY: z.string().min(1, "SendGrid API Key is mandatory for Escalations"),
+  FIREBASE_DATABASE_URL: z.string().url("Firebase Database URL is required for backend persistence"),
   
   // Business Defaults
   ESCALATION_EMAIL_TO: z.string().email(),
