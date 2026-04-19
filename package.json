@@ -3,8 +3,15 @@
   "private": true,
   "packageManager": "pnpm@10.15.1",
   "engines": {
-    "node": ">=20.0.0",
+    "node": "20.x",
     "pnpm": ">=10.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@firebase/util",
+      "protobufjs"
+    ]
   },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
