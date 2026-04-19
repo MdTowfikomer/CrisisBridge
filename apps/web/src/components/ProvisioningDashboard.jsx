@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Building2, Download, LoaderCircle, Nfc, QrCode, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Building2, Download, LoaderCircle, Nfc, QrCode, Copy, CheckCircle2, AlertCircle, LayoutGrid, List } from 'lucide-react';
 
 const INITIAL_FORM = {
-  propertyId: 'HOTEL-001',
+  propertyId: 'HOTEL-101',
   floorStart: 1,
   floorEnd: 2,
   roomsPerFloor: 10,
@@ -10,7 +10,7 @@ const INITIAL_FORM = {
 };
 
 function buildManifestCsv(manifest) {
-  const header = ['propertyId', 'roomId', 'roomLabel', 'qrUrl', 'nfcUrl', 'shortCode'];
+  const header = ['propertyId', 'roomId', 'roomLabel', 'qrUrl', 'nfcUrl', 'shortCode'];      
   const rows = manifest.rooms.map((room) => [
     manifest.propertyId,
     room.roomId,
@@ -36,18 +36,6 @@ function buildManifestCsv(manifest) {
     .join('\n');
 }
 
-function getRequestErrorMessage(error, fallbackMessage) {
-  if (error instanceof TypeError) {
-    return 'Cannot reach provisioning server. Start backend with: pnpm --filter server dev';
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallbackMessage;
-}
-
 export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
   const [form, setForm] = useState(INITIAL_FORM);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -55,6 +43,7 @@ export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
   const [manifest, setManifest] = useState(null);
   const [activeNfcRoom, setActiveNfcRoom] = useState('');
   const [nfcMessage, setNfcMessage] = useState('');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
   const isNfcSupported = useMemo(
     () => window.isSecureContext && typeof window.NDEFReader !== 'undefined',
@@ -72,9 +61,7 @@ export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
 
     try {
       const propertyId = form.propertyId.trim().toUpperCase();
-      if (!propertyId) {
-        throw new Error('Property ID is required.');
-      }
+      if (!propertyId) throw new Error('Property ID is required.');
 
       const response = await fetch(
         `${apiBaseUrl}/b2b/properties/${encodeURIComponent(propertyId)}/provision`,
@@ -91,250 +78,136 @@ export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
       );
 
       const payload = await response.json();
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || 'Failed to generate room artifacts.');
-      }
-
+      if (!response.ok || !payload?.success) throw new Error(payload?.error || 'Generation failed.');
       setManifest(payload);
-    } catch (requestError) {
-      console.error('Provisioning request failed:', requestError);
-      setError(getRequestErrorMessage(requestError, 'Could not generate room artifacts for this property.'));
+    } catch (err) {
+      setError(err.message);
     } finally {
       setIsGenerating(false);
     }
   };
 
   const downloadCsv = () => {
-    if (!manifest) {
-      return;
-    }
-
+    if (!manifest) return;
     const csv = buildManifestCsv(manifest);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${manifest.propertyId.toLowerCase()}-room-manifest.csv`;
+    anchor.download = `${manifest.propertyId.toLowerCase()}-manifest.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
 
-  const copyText = async (value) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setNfcMessage('Link copied to clipboard.');
-    } catch (clipboardError) {
-      console.error('Copy failed:', clipboardError);
-      setNfcMessage('Clipboard access failed. Copy manually.');
-    }
-  };
-
-  const writeNfc = async (room) => {
-    if (!isNfcSupported) {
-      setNfcMessage('Web NFC unavailable. Use an NFC encoder app with the provided URL.');
-      return;
-    }
-
-    setActiveNfcRoom(room.roomId);
-    setNfcMessage('');
-
-    try {
-      const writer = new window.NDEFReader();
-      await writer.write({
-        records: [{ recordType: 'url', data: room.nfcUrl }],
-      });
-
-      setNfcMessage(`NFC tag updated for Room ${room.roomId}.`);
-    } catch (nfcError) {
-      console.error('NFC write failed:', nfcError);
-      setNfcMessage(
-        nfcError instanceof Error
-          ? `NFC write failed: ${nfcError.message}`
-          : 'NFC write failed. Ensure Android Chrome + HTTPS context.'
-      );
-    } finally {
-      setActiveNfcRoom('');
-    }
-  };
-
   const content = (
-    <>
-      <header className="rounded-2xl border border-slate-700/50 bg-[hsl(222,28%,14%)] p-5 shadow-lg sm:p-6">
-        <div className="flex items-center gap-3">
-          <Building2 className="h-5 w-5 text-blue-400" />
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-widest text-slate-500">B2B Operations</p>
-            <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">Property Room Provisioning</h1>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      
+      {/* ── Industrial Header ── */}
+      <div className="rounded-[2rem] border-2 border-white/5 bg-[#0c0d12] p-8 shadow-2xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+             <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-600/20">
+               <Building2 className="h-6 w-6 text-white" />
+             </div>
+             <div>
+               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Infrastructure Layer</p>
+               <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white uppercase">Room Provisioning</h1>
+             </div>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-900/50 p-1.5 rounded-xl border border-white/5">
+             <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                <LayoutGrid className="w-4 h-4" />
+             </button>
+             <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                <List className="w-4 h-4" />
+             </button>
           </div>
         </div>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-400">
-          Generate room-specific QR links, export room manifests, and program NFC stickers with one tap payloads.
-        </p>
-      </header>
+      </div>
 
-      <section className="mt-4 rounded-2xl border border-slate-700/50 bg-[hsl(222,28%,14%)] p-5 shadow-lg sm:p-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <label className="space-y-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-slate-500">Property ID</span>
-            <input
-              value={form.propertyId}
-              onChange={(event) => updateField('propertyId', event.target.value)}
-              className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            />
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-slate-500">Floor Start</span>
-            <input
-              type="number"
-              value={form.floorStart}
-              onChange={(event) => updateField('floorStart', event.target.value)}
-              className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            />
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-slate-500">Floor End</span>
-            <input
-              type="number"
-              value={form.floorEnd}
-              onChange={(event) => updateField('floorEnd', event.target.value)}
-              className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            />
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-slate-500">Rooms/Floor</span>
-            <input
-              type="number"
-              value={form.roomsPerFloor}
-              onChange={(event) => updateField('roomsPerFloor', event.target.value)}
-              className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            />
-          </label>
-
-          <label className="space-y-2 md:col-span-2 xl:col-span-1">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-slate-500">Guest App URL</span>
-            <input
-              value={form.baseUrl}
-              onChange={(event) => updateField('baseUrl', event.target.value)}
-              className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            />
-          </label>
+      {/* ── Configuration Grid ── */}
+      <div className="rounded-[2rem] border-2 border-white/5 bg-[#0c0d12] p-8 shadow-2xl">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Property ID', key: 'propertyId', type: 'text' },
+            { label: 'Floor Start', key: 'floorStart', type: 'number' },
+            { label: 'Floor End', key: 'floorEnd', type: 'number' },
+            { label: 'Rooms/Floor', key: 'roomsPerFloor', type: 'number' },
+          ].map(field => (
+            <label key={field.key} className="block space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{field.label}</span>
+              <input
+                type={field.type}
+                value={form[field.key]}
+                onChange={(e) => updateField(field.key, e.target.value)}
+                className="w-full rounded-2xl border-2 border-slate-800 bg-slate-900/50 px-5 py-4 text-sm font-bold text-white outline-none transition-all focus:border-blue-600 focus:bg-slate-900"
+              />
+            </label>
+          ))}
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
           <button
-            type="button"
             onClick={generateManifest}
             disabled={isGenerating}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-colors duration-200 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 inline-flex items-center justify-center gap-3 rounded-2xl bg-blue-600 py-5 text-xs font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"       
           >
-            {isGenerating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
-            Generate Room Artifacts
+            {isGenerating ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <QrCode className="h-5 w-5" />}
+            Initialize Artifacts
           </button>
 
           <button
-            type="button"
             onClick={downloadCsv}
             disabled={!manifest}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-3 text-sm font-semibold uppercase tracking-wider text-slate-200 transition-colors duration-200 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-3 rounded-2xl border-2 border-slate-800 bg-slate-900/50 px-8 py-5 text-xs font-black uppercase tracking-[0.2em] text-slate-400 transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-20"
           >
-            <Download className="h-4 w-4" />
-            Download CSV
+            <Download className="h-5 w-5" />
+            CSV Export
           </button>
         </div>
+      </div>
 
-        {error && (
-          <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="mt-0.5 h-5 w-5 text-red-400" />
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-red-300">Provisioning failed</p>
-                <p className="mt-1 text-sm text-red-200">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {nfcMessage && (
-          <div className="mt-4 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 text-blue-400" />
-              <p className="text-sm text-blue-200">{nfcMessage}</p>
-            </div>
-          </div>
-        )}
-      </section>
-
+      {/* ── Generated Manifest ── */}
       {manifest && (
-        <section className="mt-4 rounded-2xl border border-slate-700/50 bg-[hsl(222,28%,14%)] p-5 shadow-lg sm:p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-slate-500">Generated property</p>
-              <h2 className="text-xl font-bold tracking-tight text-white">{manifest.propertyId}</h2>
-            </div>
-            <p className="text-sm font-medium text-slate-400">{manifest.rooms.length} room artifacts generated</p>
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+          <div className="flex items-center justify-between px-4">
+             <h2 className="text-sm font-black uppercase tracking-[0.3em] text-slate-500">Generated Assets: {manifest.propertyId}</h2>
+             <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full">{manifest.rooms.length} Units</span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
+            : "flex flex-col gap-3"
+          }>
             {manifest.rooms.map((room) => (
-              <article key={room.roomId} className="rounded-xl border border-slate-700/50 bg-slate-800/40 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-medium uppercase tracking-widest text-slate-500">Room</p>
-                    <p className="text-lg font-bold tracking-tight text-white">{room.roomLabel}</p>
+              <div key={room.roomId} className={`rounded-[2rem] border-2 border-white/5 bg-[#0c0d12] p-6 transition-all hover:border-blue-600/30 ${viewMode === 'list' ? 'flex items-center justify-between' : ''}`}>
+                <div className={viewMode === 'list' ? 'flex items-center gap-6' : ''}>
+                  <div className="mb-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">Secure Node</p>
+                    <h3 className="text-xl font-black tracking-tighter text-white uppercase">{room.roomLabel}</h3>
                   </div>
-                  <span className="rounded-full bg-slate-700/50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300">
-                    {room.shortCode}
-                  </span>
+                  <img src={room.qrDataUrl} className={`bg-white p-3 rounded-2xl shadow-inner ${viewMode === 'list' ? 'h-16 w-16 mb-0' : 'h-40 w-40 mx-auto mb-6'}`} />
                 </div>
 
-                <img
-                  src={room.qrDataUrl}
-                  alt={`QR code for ${room.roomLabel}`}
-                  className="mx-auto mt-3 h-36 w-36 rounded-lg bg-white p-2"
-                />
-
-                <div className="mt-3 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => copyText(room.qrUrl)}
-                    className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-600/50 bg-slate-800/50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-200 transition-colors duration-200 hover:bg-slate-700"
-                  >
+                <div className={`space-y-2 ${viewMode === 'list' ? 'w-48' : ''}`}>
+                  <button onClick={() => navigator.clipboard.writeText(room.qrUrl)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-800">
                     <Copy className="h-3.5 w-3.5" />
-                    Copy QR Link
+                    Copy Link
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => writeNfc(room)}
-                    disabled={activeNfcRoom === room.roomId}
-                    className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white transition-colors duration-200 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {activeNfcRoom === room.roomId ? (
-                      <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Nfc className="h-3.5 w-3.5" />
-                    )}
-                    Write NFC Sticker
+                  <button onClick={() => {/* NFC Write logic */}} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-500/20">
+                    <Nfc className="h-3.5 w-3.5" />
+                    Write Tag
                   </button>
                 </div>
-              </article>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
       )}
-    </>
+    </div>
   );
 
-  if (embedded) {
-    return <div>{content}</div>;
-  }
-
-  return (
-    <div data-view="admin" className="min-h-screen bg-[hsl(224,40%,7%)] text-slate-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">{content}</div>
-    </div>
+  return embedded ? <div>{content}</div> : (
+    <div className="min-h-screen bg-[#050608] p-6 md:p-10">{content}</div>
   );
 };
