@@ -23,7 +23,8 @@ import { rtdb } from './lib/firebase';
 import { useAppStore } from './store/useAppStore';
 
 const DESCRIPTION_LIMIT = 240;
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '/api';
+const RAW_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '/api';
+const API_BASE_URL = RAW_BACKEND_URL.replace(/\/+$/, '');
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
