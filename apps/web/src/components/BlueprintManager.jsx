@@ -72,11 +72,11 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
       if (!edgeStart) {
         setEdgeStart(node.id);
       } else if (edgeStart !== node.id) {
-        setEdges(prev => [...prev, { 
-          from: edgeStart, 
-          to: node.id, 
-          weight: 10, 
-          instruction: 'Proceed forward' 
+        setEdges(prev => [...prev, {
+          from: edgeStart,
+          to: node.id,
+          weight: 10,
+          instruction: 'Proceed forward'
         }]);
         setEdgeStart(null);
       }
@@ -112,19 +112,19 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
           </label>
           <div className="h-8 w-px bg-slate-700" />
           <div className="flex bg-slate-900 rounded-lg p-1">
-            <button 
+            <button
               onClick={() => setMode('select')}
               className={`p-2 rounded-md ${mode === 'select' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
             >
               <MousePointer2 className="w-4 h-4" />
             </button>
-            <button 
+            <button
               onClick={() => setMode('add-node')}
               className={`p-2 rounded-md ${mode === 'add-node' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
             >
               <Plus className="w-4 h-4" />
             </button>
-            <button 
+            <button
               onClick={() => setMode('add-edge')}
               className={`p-2 rounded-md ${mode === 'add-edge' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
             >
@@ -149,16 +149,16 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
             {svgContent && (
               <g dangerouslySetInnerHTML={{ __html: svgContent.replace(/<\/?svg[^>]*>/gi, '') }} />
             )}
-            
+
             {/* Edges */}
             {edges.map((edge, i) => {
               const from = nodes[edge.from];
               const to = nodes[edge.to];
               if (!from || !to) return null;
               return (
-                <line 
-                  key={i} x1={from.x} y1={from.y} x2={to.x} y2={to.y} 
-                  stroke="#3b82f6" strokeWidth="3" opacity="0.6" 
+                <line
+                  key={i} x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                  stroke="#3b82f6" strokeWidth="3" opacity="0.6"
                 />
               );
             })}
@@ -166,9 +166,9 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
             {/* Nodes */}
             {Object.values(nodes).map(node => (
               <g key={node.id} onClick={(e) => handleNodeClick(node, e)} className="cursor-pointer">
-                <circle 
-                  cx={node.x} cy={node.y} r="8" 
-                  fill={selectedNode?.id === node.id ? '#f59e0b' : node.type === 'exit' ? '#10b981' : '#3b82f6'} 
+                <circle
+                  cx={node.x} cy={node.y} r="8"
+                  fill={selectedNode?.id === node.id ? '#f59e0b' : node.type === 'exit' ? '#10b981' : '#3b82f6'}
                 />
                 {node.label && (
                   <text x={node.x} y={node.y - 12} fontSize="10" fill="white" textAnchor="middle" className="pointer-events-none font-bold">
@@ -179,7 +179,7 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
             ))}
 
             {edgeStart && nodes[edgeStart] && (
-               <line x1={nodes[edgeStart].x} y1={nodes[edgeStart].y} x2={nodes[edgeStart].x} y2={nodes[edgeStart].y} stroke="#f59e0b" strokeWidth="2" strokeDasharray="4" />
+              <line x1={nodes[edgeStart].x} y1={nodes[edgeStart].y} x2={nodes[edgeStart].x} y2={nodes[edgeStart].y} stroke="#f59e0b" strokeWidth="2" strokeDasharray="4" />
             )}
           </svg>
         </div>
@@ -190,19 +190,19 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
             <div className="space-y-4">
               <label className="block space-y-1">
                 <span className="text-xs text-slate-400 uppercase font-bold">Label</span>
-                <input 
+                <input
                   value={selectedNode.label}
                   onChange={(e) => {
                     const updated = { ...selectedNode, label: e.target.value };
                     setSelectedNode(updated);
                     setNodes(prev => ({ ...prev, [updated.id]: updated }));
                   }}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
                 />
               </label>
               <label className="block space-y-1">
                 <span className="text-xs text-slate-400 uppercase font-bold">Type</span>
-                <select 
+                <select
                   value={selectedNode.type}
                   onChange={(e) => {
                     const updated = { ...selectedNode, type: e.target.value };
@@ -217,7 +217,7 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
                   <option value="transition">Elevator/Stairs</option>
                 </select>
               </label>
-              <button 
+              <button
                 onClick={() => {
                   const updatedNodes = { ...nodes };
                   delete updatedNodes[selectedNode.id];
@@ -236,12 +236,12 @@ export const BlueprintManager = ({ propertyId, apiBaseUrl }) => {
           )}
 
           <div className="pt-4 border-t border-slate-700">
-             <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Instructions</h4>
-             <ul className="text-xs text-slate-500 space-y-2">
-                <li>â€¢ <b>Select Mode:</b> Click nodes to edit.</li>
-                <li>â€¢ <b>Add Node:</b> Click anywhere on map to drop a node.</li>
-                <li>â€¢ <b>Add Edge:</b> Click two nodes to connect them.</li>
-             </ul>
+            <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Instructions</h4>
+            <ul className="text-xs text-slate-500 space-y-2">
+              <li> <b>Select Mode:</b> Click nodes to edit.</li>
+              <li> <b>Add Node:</b> Click anywhere on map to drop a node.</li>
+              <li> <b>Add Edge:</b> Click two nodes to connect them.</li>
+            </ul>
           </div>
         </div>
       </div>
