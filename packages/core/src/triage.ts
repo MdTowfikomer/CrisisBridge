@@ -43,7 +43,7 @@ export class TriageService {
       try {
         // Attempt with Fallback Model (1.0 Pro)
         return await this.executeTriage(FALLBACK_MODEL, prompt);
-      } catch (fallbackError) {
+      } catch (fallbackError: any) {
         console.error('❌ Gemini Triage: All models failed.', fallbackError.message);
         return this.getFallbackTriage(alert);
       }
