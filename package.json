@@ -8,10 +8,10 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild",
       "@firebase/util",
-      "protobufjs",
-      "core-js"
+      "core-js",
+      "esbuild",
+      "protobufjs"
     ]
   },
   "scripts": {

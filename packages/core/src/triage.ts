@@ -1,8 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { TriageResult } from "@crisisbridge/types";
 
-// Using the most stable flash model identifier
-const MODEL_NAME = "gemini-1.5-flash-latest"; 
+// Primary and Fallback model identifiers for high availability
+const PRIMARY_MODEL = "gemini-1.5-flash";
+const FALLBACK_MODEL = "gemini-1.0-pro";
 
 export class TriageService {
   private genAI: GoogleGenerativeAI;
@@ -12,11 +13,9 @@ export class TriageService {
   }
 
   /**
-   * Analyzes an emergency description and returns structured triage data.
+   * Analyzes an emergency description with an automatic model fallback mechanism.
    */
   async analyzeAlert(alert: any, targetLanguage: string = 'en'): Promise<TriageResult> {
-    const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
-
     const prompt = `
       You are an emergency triage AI for a hospitality environment.
       Analyze the following emergency alert and provide a structured response in JSON format.
@@ -37,26 +36,38 @@ export class TriageService {
     `;
 
     try {
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      });
-
-      const response = await result.response;
-      return JSON.parse(response.text()) as TriageResult;
-    } catch (error) {
-      console.error('Gemini Triage Error:', error);
-      return this.getFallbackTriage(alert);
+      // Attempt with Primary Model (1.5 Flash)
+      return await this.executeTriage(PRIMARY_MODEL, prompt);
+    } catch (primaryError) {
+      console.warn(`⚠️ Gemini Primary Model (${PRIMARY_MODEL}) failed, attempting fallback...`);
+      try {
+        // Attempt with Fallback Model (1.0 Pro)
+        return await this.executeTriage(FALLBACK_MODEL, prompt);
+      } catch (fallbackError) {
+        console.error('❌ Gemini Triage: All models failed.', fallbackError.message);
+        return this.getFallbackTriage(alert);
+      }
     }
+  }
+
+  private async executeTriage(modelName: string, prompt: string): Promise<TriageResult> {
+    const model = this.genAI.getGenerativeModel({ model: modelName });
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const response = await result.response;
+    return JSON.parse(response.text()) as TriageResult;
   }
 
   /**
    * Generates a professional post-incident summary using Gemini.
    */
   async generateIncidentSummary(incidentRecord: any): Promise<string> {
-    const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
+    const model = this.genAI.getGenerativeModel({ model: PRIMARY_MODEL });
 
     const prompt = `
       You are a professional crisis coordinator.
