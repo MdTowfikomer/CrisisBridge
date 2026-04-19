@@ -1,6 +1,8 @@
 import sgMail from '@sendgrid/mail';
-import { retry, expoBackoff, handleType } from 'cockatiel';
+import cockatiel from 'cockatiel';
 import dotenv from 'dotenv';
+
+const { retry, ExponentialBackoff, handleAll, handleType } = cockatiel;
 
 dotenv.config();
 
@@ -11,7 +13,7 @@ if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'your_sendg
 // Production-grade retry policy: 3 attempts with exponential backoff
 const retryPolicy = retry(handleType(Error), {
   maxAttempts: 3,
-  backoff: new expoBackoff(),
+  backoff: new ExponentialBackoff(),
 });
 
 export const EscalationService = {
