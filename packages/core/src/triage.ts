@@ -1,9 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { TriageResult } from "@crisisbridge/types";
 
-// Primary and Fallback model identifiers for high availability
+// Primary, Secondary, and Tertiary models for maximum resilience
 const PRIMARY_MODEL = "gemini-1.5-flash";
-const FALLBACK_MODEL = "gemini-1.0-pro";
+const SECONDARY_MODEL = "gemini-1.5-pro";
+const TERTIARY_MODEL = "gemini-1.0-pro";
 
 export class TriageService {
   private genAI: GoogleGenerativeAI;
@@ -36,16 +37,22 @@ export class TriageService {
     `;
 
     try {
-      // Attempt with Primary Model (1.5 Flash)
+      // Attempt 1: Primary Model (1.5 Flash)
       return await this.executeTriage(PRIMARY_MODEL, prompt);
-    } catch (primaryError) {
-      console.warn(`⚠️ Gemini Primary Model (${PRIMARY_MODEL}) failed, attempting fallback...`);
+    } catch (e1) {
+      console.warn(`⚠️ Primary Model (${PRIMARY_MODEL}) failed, trying ${SECONDARY_MODEL}...`);
       try {
-        // Attempt with Fallback Model (1.0 Pro)
-        return await this.executeTriage(FALLBACK_MODEL, prompt);
-      } catch (fallbackError: any) {
-        console.error('❌ Gemini Triage: All models failed.', fallbackError.message);
-        return this.getFallbackTriage(alert);
+        // Attempt 2: Secondary Model (1.5 Pro)
+        return await this.executeTriage(SECONDARY_MODEL, prompt);
+      } catch (e2) {
+        console.warn(`⚠️ Secondary Model (${SECONDARY_MODEL}) failed, trying ${TERTIARY_MODEL}...`);
+        try {
+          // Attempt 3: Tertiary Model (1.0 Pro)
+          return await this.executeTriage(TERTIARY_MODEL, prompt);
+        } catch (e3: any) {
+          console.error('❌ ALL Gemini Models failed:', e3.message);
+          return this.getFallbackTriage(alert);
+        }
       }
     }
   }
