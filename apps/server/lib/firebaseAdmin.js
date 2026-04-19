@@ -15,21 +15,22 @@ function initializeFirebase() {
   
   if (serviceAccountVar) {
     try {
-      const serviceAccount = JSON.parse(serviceAccountVar);
+      // Handle potential escaped newlines if the JSON was stringified incorrectly
+      const sanitized = serviceAccountVar.replace(/\\n/g, '\n');
+      const serviceAccount = JSON.parse(sanitized);
+
+      console.log('✅ Firebase Admin: Initializing with Service Account');
       return admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         databaseURL: process.env.FIREBASE_DATABASE_URL
       });
     } catch (e) {
-      console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT. Falling back to default.');
+      console.error('❌ Firebase Admin: Failed to parse FIREBASE_SERVICE_ACCOUNT:', e.message);
     }
   }
 
-  // Fallback to Application Default Credentials (good for local dev)
-  return admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    databaseURL: process.env.FIREBASE_DATABASE_URL
-  });
+  console.warn('⚠️ Firebase Admin: No service account found. Falling back to default credentials (may fail in production).');
+
 }
 
 export const firebaseAdmin = initializeFirebase();
