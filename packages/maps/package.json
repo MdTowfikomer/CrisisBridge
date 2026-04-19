@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Map data and navigation logic for CrisisBridge",
   "main": "dist/index.js",
+  "type": "module",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
