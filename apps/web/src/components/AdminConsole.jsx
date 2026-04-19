@@ -22,6 +22,7 @@ import { rtdb } from '../lib/firebase';
 import { ProvisioningDashboard } from './ProvisioningDashboard';
 import { LiveTrackingPanel } from './LiveTrackingPanel';
 import { BlueprintManager } from './BlueprintManager';
+import { SmartBroadcastTool } from './SmartBroadcastTool';
 
 const NAV_ITEMS = [
   { id: 'live-incidents', label: 'Incidents', icon: BellRing },
@@ -59,6 +60,7 @@ export const AdminConsole = ({ apiBaseUrl, section }) => {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState(section || 'live-incidents');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
 
   useEffect(() => {
     const alertsRef = ref(rtdb, 'alerts');
@@ -176,9 +178,18 @@ export const AdminConsole = ({ apiBaseUrl, section }) => {
       <main className="flex-1 flex flex-col bg-[#050608] relative overflow-hidden">
          {/* Desktop Header */}
          <header className="hidden md:flex h-20 border-b border-white/5 items-center justify-between px-10 bg-[#0c0d12]/50 backdrop-blur-md">
-            <div>
-               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 leading-none mb-1">HQ Command</h2>
-               <h3 className="text-xl font-black tracking-tight text-white uppercase">{NAV_ITEMS.find(n => n.id === activeSection)?.label || 'System'}</h3>
+            <div className="flex items-center gap-8">
+               <div>
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 leading-none mb-1">HQ Command</h2>
+                  <h3 className="text-xl font-black tracking-tight text-white uppercase">{NAV_ITEMS.find(n => n.id === activeSection)?.label || 'System'}</h3>
+               </div>
+               <button 
+                  onClick={() => setIsBroadcastOpen(true)}
+                  className="flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-600/10"
+               >
+                  <Radio className="w-3.5 h-3.5" />
+                  New Broadcast
+               </button>
             </div>
             <div className="flex items-center gap-4">
                <div className="text-right">
@@ -210,7 +221,33 @@ export const AdminConsole = ({ apiBaseUrl, section }) => {
                 </button>
               );
             })}
+            <button
+               onClick={() => setIsBroadcastOpen(true)}
+               className="flex flex-col items-center justify-center gap-1 w-full h-full text-blue-400"
+            >
+               <Radio className="w-5 h-5 animate-pulse" />
+               <span className="text-[8px] font-black uppercase tracking-tighter text-blue-500">Signal</span>
+            </button>
          </div>
+
+         {/* ── Overlays ── */}
+         <AnimatePresence>
+            {isBroadcastOpen && (
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+                  <motion.div 
+                     initial={{ scale: 0.9, opacity: 0 }}
+                     animate={{ scale: 1, opacity: 1 }}
+                     exit={{ scale: 0.9, opacity: 0 }}
+                     className="w-full max-w-lg"
+                  >
+                     <SmartBroadcastTool 
+                        propertyId="HOTEL-101" 
+                        onDismiss={() => setIsBroadcastOpen(false)} 
+                     />
+                  </motion.div>
+               </div>
+            )}
+         </AnimatePresence>
       </main>
     </div>
   );

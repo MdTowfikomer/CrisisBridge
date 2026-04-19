@@ -19,6 +19,8 @@ import { ResponderDashboard } from './components/ResponderDashboard';
 import { AdminConsole } from './components/AdminConsole';
 import { GuestMapView } from './components/GuestMapView';
 import { SafetyFooter } from './components/SafetyFooter';
+import { BroadcastTakeover } from './components/BroadcastTakeover';
+import { usePedestrianTracking } from './hooks/usePedestrianTracking';
 import { rtdb } from './lib/firebase';
 import { useAppStore } from './store/useAppStore';
 
@@ -69,6 +71,16 @@ function App() {
   const [activeAlertKey, setActiveAlertKey] = useState('');
   const [liveStatus, setLiveStatus] = useState('PENDING');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [guestId] = useState(() => `guest_${Math.random().toString(36).substr(2, 9)}`);
+
+  const { position, calibrateFromQR } = usePedestrianTracking();
+
+  useEffect(() => {
+    // Initial calibration from URL parameters if available
+    if (x && y) {
+      calibrateFromQR(Number(x), Number(y), Number(floor) || 1);
+    }
+  }, [x, y, floor, calibrateFromQR]);
 
   useEffect(() => {
     const route = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -286,6 +298,13 @@ function App() {
 
       {/* Persistent Safety Overlay */}
       <SafetyFooter />
+
+      {/* Smart Broadcast Takeover */}
+      <BroadcastTakeover 
+        propertyId={propertyId} 
+        userPosition={position} 
+        guestId={guestId} 
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ export interface GraphNode extends Position {
   id: string;
   label: string;
   type: string;
+  zone?: string; // e.g., "North Wing", "Lobby"
 }
 
 export interface GraphEdge {
@@ -66,6 +67,25 @@ export interface TriageResult {
     action_item: string;
   };
   requires_ems: boolean;
+}
+
+export type ZoneType = "SEMANTIC" | "RADIAL" | "GLOBAL";
+
+export interface Broadcast {
+  id: string;
+  propertyId: string;
+  message: string;
+  severity: Severity;
+  zoneType: ZoneType;
+  zoneValue: string; // Wing name for SEMANTIC, "x,y,radius" for RADIAL
+  createdAt: number;
+  active: boolean;
+}
+
+export interface BroadcastAck {
+  guestId: string;
+  broadcastId: string;
+  acknowledgedAt: number;
 }
 
 export const EmergencyType = z.enum(['FIRE', 'SECURITY', 'MEDICAL']);
