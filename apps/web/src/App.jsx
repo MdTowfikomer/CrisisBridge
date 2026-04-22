@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ref, push, set, onValue } from 'firebase/database';
+import { onAuthStateChanged } from 'firebase/auth';
 import { 
   AlertCircle, 
   Shield, 
@@ -21,8 +22,9 @@ import { GuestMapView } from './components/GuestMapView';
 import { SafetyFooter } from './components/SafetyFooter';
 import { BroadcastTakeover } from './components/BroadcastTakeover';
 import { usePedestrianTracking } from './hooks/usePedestrianTracking';
-import { rtdb } from './lib/firebase';
+import { rtdb, auth } from './lib/firebase';
 import { useAppStore } from './store/useAppStore';
+import { LoginScreen } from './components/LoginScreen';
 
 const DESCRIPTION_LIMIT = 240;
 const RAW_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '/api';
@@ -71,9 +73,31 @@ function App() {
   const [activeAlertKey, setActiveAlertKey] = useState('');
   const [liveStatus, setLiveStatus] = useState('PENDING');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('cb_theme') || 'dark');
   const [guestId] = useState(() => `guest_${Math.random().toString(36).substr(2, 9)}`);
+  
+  // Auth State
+  const [user, setUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('cb_theme', theme);
+  }, [theme]);
 
   const { position, calibrateFromQR } = usePedestrianTracking();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     // Initial calibration from URL parameters if available
@@ -150,8 +174,23 @@ function App() {
     }
   };
 
-  if (view === 'responder') return <ResponderDashboard apiBaseUrl={API_BASE_URL} />;
-  if (view === 'admin') return <AdminConsole apiBaseUrl={API_BASE_URL} section={adminSection} />;
+  // Protected Routes Handling
+  if (view === 'admin' || view === 'responder') {
+    if (isAuthLoading) {
+      return (
+        <div className="min-h-screen bg-app flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        </div>
+      );
+    }
+    
+    if (!user) {
+      return <LoginScreen targetRole={view} />;
+    }
+
+    if (view === 'admin') return <AdminConsole apiBaseUrl={API_BASE_URL} section={adminSection} />;
+    if (view === 'responder') return <ResponderDashboard apiBaseUrl={API_BASE_URL} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#0c0d12] text-white flex flex-col font-sans selection:bg-blue-500/30">
@@ -160,6 +199,7 @@ function App() {
       {isNavigating ? (
         <GuestMapView
           startLocation={initialStartLocation}
+          roomId={rawRoom}
           propertyId={propertyId}
           apiBaseUrl={API_BASE_URL}
         />

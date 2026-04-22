@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Radio, Send, Target, Layout, Circle, X } from 'lucide-react';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, update } from 'firebase/database';
 import { rtdb } from '../lib/firebase';
 
 export const SmartBroadcastTool = ({ propertyId, onDismiss }) => {
@@ -18,7 +18,14 @@ export const SmartBroadcastTool = ({ propertyId, onDismiss }) => {
       const broadcastRef = ref(rtdb, `broadcasts/${propertyId}`);
       const newBroadcastRef = push(broadcastRef);
       
-      await set(newBroadcastRef, {
+      const msg = message.trim().toUpperCase();
+      let profileId = 'standard';
+      if (msg.includes('FIRE') || msg.includes('SMOKE') || msg.includes('EVACUATE')) profileId = 'fire';
+      if (msg.includes('LOCKDOWN') || msg.includes('SHOOTER') || msg.includes('SECURITY')) profileId = 'lockdown';
+
+      // Atomically update broadcast and active mission profile (OQ3)
+      const updates = {};
+      updates[`broadcasts/${propertyId}/${newBroadcastRef.key}`] = {
         id: newBroadcastRef.key,
         propertyId,
         message: message.trim(),
@@ -27,8 +34,16 @@ export const SmartBroadcastTool = ({ propertyId, onDismiss }) => {
         zoneValue,
         createdAt: Date.now(),
         active: true
-      });
+      };
       
+      updates[`properties/${propertyId}/activeMode`] = {
+        profileId,
+        activatedAt: Date.now(),
+        activatedBy: 'admin',
+        broadcastId: newBroadcastRef.key
+      };
+
+      await update(ref(rtdb), updates);
       onDismiss();
     } catch (err) {
       console.error('Broadcast failed:', err);

@@ -58,22 +58,23 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
     // Load Map
     const mapRef = ref(rtdb, `maps/${propertyId}`);
     const unsubMap = onValue(mapRef, (snap) => {
-      const data = snap.val();
-      if (data) {
-        setMapData(data);
-        setFloorplanSvg(data.svgContent || '');
+      if (snap.exists()) {
+        setMapData(snap.val());
+        if (snap.val().svgContent) {
+          setFloorplanSvg(snap.val().svgContent);
+        }
       }
+      setLoading(false);
+    }, (err) => {
+      console.error("Failed to load map data:", err);
+      setLoading(false);
     });
 
     // Load Live Data
-    const locRef = ref(rtdb, 'liveLocations');
+    const locRef = ref(rtdb, `tracking/${propertyId}`);
     const unsubLoc = onValue(locRef, (snap) => {
       const data = snap.val() || {};
-      // Filter for current property
-      const filtered = Object.entries(data)
-        .filter(([_, loc]) => loc.property === propertyId)
-        .reduce((acc, [id, loc]) => ({ ...acc, [id]: loc }), {});
-      setLocations(filtered);
+      setLocations(data);
       setLoading(false);
     });
 
@@ -85,17 +86,29 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
 
   // Spatial Grouping Logic
   const groupedUsers = useMemo(() => {
+    if (!mapData?.nodes) return {};
+
     const groups = {};
     Object.entries(locations).forEach(([id, loc]) => {
-      const key = `${Math.round(loc.x)},${Math.round(loc.y)}`;
+      // Find coordinates from map node
+      const node = mapData.nodes[loc.nodeId];
+      if (!node) return;
+
+      const key = `${Math.round(node.x)},${Math.round(node.y)}`;
       if (!groups[key]) {
-        groups[key] = { x: loc.x, y: loc.y, users: [], status: loc.status };
+        groups[key] = { 
+          x: node.x, 
+          y: node.y, 
+          name: node.label || node.type.toUpperCase(),
+          users: [], 
+          status: loc.status 
+        };
       }
       groups[key].users.push({ id, ...loc });
       if (loc.status === 'evacuating') groups[key].status = 'evacuating';
     });
     return groups;
-  }, [locations]);
+  }, [locations, mapData]);
 
   if (loading) return (
     <div className="h-full flex flex-col items-center justify-center text-slate-500">
@@ -184,7 +197,7 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
                   }`}
                 >
                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Zone {key}</span>
+                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{group.name}</span>
                       <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${group.status === 'evacuating' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}>
                         {group.status}
                       </span>

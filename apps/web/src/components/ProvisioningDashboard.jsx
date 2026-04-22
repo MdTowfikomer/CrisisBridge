@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Building2, Download, LoaderCircle, Nfc, QrCode, Copy, CheckCircle2, AlertCircle, LayoutGrid, List } from 'lucide-react';
+import { Building2, Download, LoaderCircle, Nfc, QrCode, Copy, CheckCircle2, AlertCircle, LayoutGrid, List, Database } from 'lucide-react';
+import { ref, get } from 'firebase/database';
+import { rtdb } from '../lib/firebase';
 
 const INITIAL_FORM = {
   propertyId: 'HOTEL-101',
@@ -87,6 +89,71 @@ export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
     }
   };
 
+  const syncFromBlueprint = async () => {
+    setIsGenerating(true);
+    setError('');
+    setNfcMessage('');
+
+    try {
+      const propertyId = form.propertyId.trim().toUpperCase();
+      if (!propertyId) throw new Error('Property ID is required.');
+
+      // Fetch nodes directly from Firebase map
+      const snapshot = await get(ref(rtdb, `maps/${propertyId}/nodes`));
+      const nodesData = snapshot.val();
+      
+      if (!nodesData) {
+        throw new Error(`No blueprint found for property: ${propertyId}`);
+      }
+
+      // Convert all non-archived nodes into room provisions with unique numbering
+      const counters = {};
+      const explicitRooms = Object.values(nodesData)
+        .filter(n => n.status !== 'archived')
+        .map(n => {
+          let baseLabel = 'Node';
+          if (n.type) {
+            baseLabel = n.type === 'path' ? 'Path Node' : n.type.charAt(0).toUpperCase() + n.type.slice(1);
+          }
+          if (n.label) {
+            baseLabel = n.label; // Admin's custom text
+          }
+          
+          counters[baseLabel] = (counters[baseLabel] || 0) + 1;
+          const finalLabel = `${baseLabel} ${counters[baseLabel]}`;
+
+          return {
+            id: n.id,
+            label: finalLabel
+          };
+        });
+
+      if (explicitRooms.length === 0) {
+        throw new Error('No active nodes found in the blueprint to sync.');
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/b2b/properties/${encodeURIComponent(propertyId)}/provision`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            baseUrl: form.baseUrl.trim(),
+            explicitRooms,
+          }),
+        }
+      );
+
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(payload?.error || 'Sync failed.');
+      setManifest(payload);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const downloadCsv = () => {
     if (!manifest) return;
     const csv = buildManifestCsv(manifest);
@@ -150,10 +217,19 @@ export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
           <button
             onClick={generateManifest}
             disabled={isGenerating}
-            className="flex-1 inline-flex items-center justify-center gap-3 rounded-2xl bg-blue-600 py-5 text-xs font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"       
+            className="flex-1 inline-flex items-center justify-center gap-3 rounded-2xl bg-slate-800 border-2 border-slate-700 py-5 text-xs font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-slate-700 active:scale-95 disabled:opacity-50"       
           >
             {isGenerating ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <QrCode className="h-5 w-5" />}
-            Initialize Artifacts
+            Generic Batch
+          </button>
+
+          <button
+            onClick={syncFromBlueprint}
+            disabled={isGenerating}
+            className="flex-1 inline-flex items-center justify-center gap-3 rounded-2xl bg-blue-600 py-5 text-xs font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50 shadow-lg shadow-blue-500/20"       
+          >
+            {isGenerating ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Database className="h-5 w-5" />}
+            Sync Blueprint
           </button>
 
           <button
@@ -164,6 +240,12 @@ export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
             <Download className="h-5 w-5" />
             CSV Export
           </button>
+          {error && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400 border border-red-500/20">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              {error}
+            </div>
+          )}
         </div>
       </div>
 
@@ -190,6 +272,10 @@ export const ProvisioningDashboard = ({ apiBaseUrl, embedded = false }) => {
                 </div>
 
                 <div className={`space-y-2 ${viewMode === 'list' ? 'w-48' : ''}`}>
+                  <button onClick={() => window.open(room.qrUrl, '_blank')} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600/10 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600 hover:text-white transition-all">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Verify Map Link
+                  </button>
                   <button onClick={() => navigator.clipboard.writeText(room.qrUrl)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-800">
                     <Copy className="h-3.5 w-3.5" />
                     Copy Link

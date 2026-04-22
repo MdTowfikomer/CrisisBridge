@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ref, onValue, update } from 'firebase/database';
+import { signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { rtdb } from '../lib/firebase';
+import { rtdb, auth } from '../lib/firebase';
 import { 
   Bell, 
   Map as MapIcon, 
@@ -10,10 +11,13 @@ import {
   Radio,
   Maximize2,
   X as CloseIcon,
-  List as ListIcon
+  List as ListIcon,
+  LogOut
 } from 'lucide-react';
 import { LiveTrackingPanel } from './LiveTrackingPanel';
 import { TacticalFocusCard } from './TacticalFocusCard';
+import { AnimatePresence, motion } from 'framer-motion';
+import { SmartBroadcastTool } from './SmartBroadcastTool';
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -101,6 +105,14 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <div className="h-screen bg-[#050608] text-slate-100 flex flex-col overflow-hidden font-sans selection:bg-blue-500/30">
 
@@ -133,7 +145,14 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
                <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tactical Link Established</span>
             </div>
-            <a href="/admin" className="text-[10px] font-black uppercase tracking-widest bg-slate-900 border border-white/5 px-4 py-2 rounded-lg hover:bg-slate-800 transition-all">HQ Admin</a>
+            <a href="/admin" className="text-[10px] font-black uppercase tracking-widest bg-slate-900 border border-white/5 px-4 py-2 rounded-lg hover:bg-slate-800 transition-all hidden md:block">HQ Admin</a>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-red-500/80 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"
+              title="Sign Out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
          </div>
       </header>
 

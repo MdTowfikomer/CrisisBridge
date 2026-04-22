@@ -4,12 +4,19 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
+        surface: {
+          DEFAULT: 'var(--bg-surface)',
+          alt: 'var(--bg-surface-alt)',
+        },
+        main: 'var(--text-primary)',
+        dim: 'var(--text-secondary)',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

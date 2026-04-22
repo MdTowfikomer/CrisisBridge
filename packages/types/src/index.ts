@@ -99,10 +99,30 @@ export const EmergencyAlertSchema = z.object({
   timestamp: z.number(), // Date.now()
 });
 
-export const IncidentRecordSchema = z.object({
-  alert: EmergencyAlertSchema,
-  responderId: z.string().optional(),
-  actions: z.array(z.string()),
-  summary: z.string().optional(),
-  isFinalized: z.boolean().default(false),
-});
+export interface IncidentRecordSchema {
+  alert: any; // Simplified for this addition
+  responderId?: string;
+  actions: string[];
+  summary?: string;
+  isFinalized: boolean;
+}
+
+export interface MissionProfile {
+  id: string;
+  name: string;
+  weights: {
+    exit: number;
+    safety: number;
+    path: number;
+    transition: number;
+  };
+  highlightTypes: string[]; // e.g., ["exit", "safety"]
+  guidanceText: string;
+}
+
+export interface ActiveMode {
+  profileId: string;
+  activatedAt: number;
+  activatedBy: string;
+  affectedZones?: string[];
+}

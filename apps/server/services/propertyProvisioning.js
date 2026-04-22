@@ -12,7 +12,12 @@ export const ProvisioningRequestSchema = z
     floorStart: z.number().int().min(0).default(1),
     floorEnd: z.number().int().min(0).default(1),
     roomsPerFloor: z.number().int().min(1).max(300).default(20),
-    explicitRooms: z.array(z.string().trim().min(1).max(12)).max(1000).optional(),
+    explicitRooms: z.array(
+      z.object({
+        id: z.string().trim().min(1).max(64),
+        label: z.string().trim().max(128).optional()
+      })
+    ).max(1000).optional(),
   })
   .superRefine((value, ctx) => {
     if (!value.explicitRooms && value.floorEnd < value.floorStart) {
@@ -47,14 +52,16 @@ function signedRoomUrl({ baseUrl, propertyId, roomId, entry }) {
 
 function buildRoomIds({ floorStart, floorEnd, roomsPerFloor, explicitRooms }) {
   if (explicitRooms?.length) {
-    return [...new Set(explicitRooms)];
+    // Return array of objects
+    return explicitRooms.map(r => ({ id: r.id, label: r.label }));
   }
 
   const roomIds = [];
   for (let floor = floorStart; floor <= floorEnd; floor += 1) {
     for (let index = 1; index <= roomsPerFloor; index += 1) {
       const roomSuffix = String(index).padStart(2, '0');
-      roomIds.push(`${floor}${roomSuffix}`);
+      const id = `${floor}${roomSuffix}`;
+      roomIds.push({ id, label: `Room ${id}` });
     }
   }
 
@@ -87,12 +94,12 @@ export function buildRoomManifestCsv(manifest) {
 
 export async function provisionPropertyRooms({ propertyId, payload }) {
   const normalizedPropertyId = propertyId.trim().toUpperCase();
-  const roomIds = buildRoomIds(payload);
+  const roomEntries = buildRoomIds(payload);
   const baseUrl = payload.baseUrl || DEFAULT_BASE_URL;
 
   const rooms = await Promise.all(
-    roomIds.map(async (roomId) => {
-      const normalizedRoom = roomId.trim();
+    roomEntries.map(async (entryObj) => {
+      const normalizedRoom = entryObj.id.trim();
       const qrUrl = signedRoomUrl({
         baseUrl,
         propertyId: normalizedPropertyId,
@@ -118,8 +125,8 @@ export async function provisionPropertyRooms({ propertyId, payload }) {
 
       return {
         roomId: normalizedRoom,
-        roomLabel: `Room ${normalizedRoom}`,
-        shortCode: `${normalizedPropertyId}-${normalizedRoom}`,
+        roomLabel: entryObj.label || `Room ${normalizedRoom}`,
+        shortCode: `${normalizedPropertyId}-${normalizedRoom.slice(0, 6)}`,
         qrUrl,
         nfcUrl,
         nfcNdefRecord: {

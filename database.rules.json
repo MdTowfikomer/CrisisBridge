@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "properties": {
+      "$propertyId": {
+        ".read": "auth != null",
+        "activeMode": {
+          ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+        },
+        "missionProfiles": {
+          ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+          ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+        }
+      }
+    },
+    "maps": {
+      "$propertyId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'responder')",
+        ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      }
+    },
+    "alerts": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "broadcasts": {
+      ".read": "auth != null",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+    }
+  }
+}

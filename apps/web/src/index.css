@@ -5,7 +5,16 @@
 @tailwind utilities;
 
 :root {
-  /* Crisis Design System: High-Contrast / Low-Cognitive Load */
+  /* Pristine Office (Light Mode) */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-subtle: rgba(15, 23, 42, 0.05);
+  --border-strong: rgba(15, 23, 42, 0.1);
+
+  /* Legacy Design Variables Mapping */
   --crisis-bg: #0c0d12;
   --crisis-red: #ef4444;
   --crisis-amber: #f59e0b;
@@ -15,11 +24,26 @@
   --crisis-slate: #64748b;
 }
 
+.dark {
+  /* Tactical Dark (Legacy Mode) */
+  --bg-app: #050608;
+  --bg-surface: #0c0d12;
+  --bg-surface-alt: #16181d;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.1);
+  --crisis-bg: #0c0d12;
+}
+
 @layer base {
   body {
-    @apply bg-[var(--crisis-bg)] text-white antialiased;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    @apply antialiased;
     font-family: 'Noto Sans', sans-serif;
     touch-action: manipulation;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Figtree', sans-serif;
@@ -27,6 +51,13 @@
 }
 
 @layer components {
+  .bg-app { background-color: var(--bg-app); }
+  .bg-surface { background-color: var(--bg-surface); }
+  .bg-surface-alt { background-color: var(--bg-surface-alt); }
+  .text-main { color: var(--text-primary); }
+  .text-dim { color: var(--text-secondary); }
+  .border-tactical { border-color: var(--border-subtle); }
+  
   /* Ultra-bold emergency button style */
   .btn-crisis-trigger {
     @apply relative flex flex-col items-center justify-center p-8 rounded-[2rem] transition-all active:scale-95 overflow-hidden;
