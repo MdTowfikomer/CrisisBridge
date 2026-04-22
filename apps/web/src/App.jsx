@@ -137,13 +137,15 @@ function App() {
     const elapsed = now - lastTrackingWriteRef.current;
     if (elapsed < 2000 && lastTrackingWriteRef.current !== 0) return;
 
-    // Resolve Best Available Coordinates from live sensor position.
+    // Resolve best available coordinates from live sensor position,
+    // and fall back to nodeId-only writes when the tactical map is active.
     let finalX = position?.x;
     let finalY = position?.y;
-    let finalFloor = position?.floor ?? 1;
+    const hasSensorCoords = typeof finalX === 'number' && typeof finalY === 'number';
+    const hasNode = Boolean(currentNodeId);
 
-    // Skip write if we still have no coordinates
-    if (typeof finalX !== 'number' || typeof finalY !== 'number') return;
+    // Skip write if we have neither coordinates nor a node reference
+    if (!hasSensorCoords && !hasNode) return;
 
     lastTrackingWriteRef.current = now;
     const trackingRef = ref(rtdb, `tracking/${propertyId}/${guestId}`);
@@ -151,16 +153,23 @@ function App() {
     // Configure cleanup ONCE for this session ID
     onDisconnect(trackingRef).remove();
 
-    set(trackingRef, {
-      x: finalX,
-      y: finalY,
+    const trackingPayload = {
       nodeId: currentNodeId || null,
       battery: batteryLevel || null,
-      floor: finalFloor,
       status: isSent ? 'evacuating' : 'active',
       lastSeen: now,
       type: 'GUEST'
-    }).catch(err => console.warn('Tracking write failed:', err.message));
+    };
+
+    if (hasSensorCoords) {
+      trackingPayload.x = finalX;
+      trackingPayload.y = finalY;
+      if (typeof position?.floor === 'number') {
+        trackingPayload.floor = position.floor;
+      }
+    }
+
+    set(trackingRef, trackingPayload).catch(err => console.warn('Tracking write failed:', err.message));
   }, [position, propertyId, guestId, isSent, view, currentNodeId, batteryLevel]);
 
   useEffect(() => {
@@ -208,22 +217,31 @@ function App() {
     setIsTriageLoading(true);
     setLastAlert(alertData);
 
-    // Telemetry Sync: Pin guest location immediately from the current live position.
+    // Telemetry Sync: Pin guest location immediately from the current live position,
+    // or by nodeId if the tactical map is active.
     const finalX = position?.x;
     const finalY = position?.y;
-    
-    if (typeof finalX === 'number' && typeof finalY === 'number') {
+
+    const hasSensorCoords = typeof finalX === 'number' && typeof finalY === 'number';
+    const hasNode = Boolean(currentNodeId);
+
+    if (hasSensorCoords || hasNode) {
       const trackingRef = ref(rtdb, `tracking/${propertyId}/${guestId}`);
       onDisconnect(trackingRef).remove(); // Register cleanup early
-      set(trackingRef, {
-        x: finalX,
-        y: finalY,
+      const trackingPayload = {
         nodeId: currentNodeId || null,
-        floor: position?.floor || 1,
         status: 'evacuating',
         lastSeen: Date.now(),
         type: 'GUEST'
-      }).catch(() => {});
+      };
+      if (hasSensorCoords) {
+        trackingPayload.x = finalX;
+        trackingPayload.y = finalY;
+        if (typeof position?.floor === 'number') {
+          trackingPayload.floor = position.floor;
+        }
+      }
+      set(trackingRef, trackingPayload).catch(() => {});
     }
 
     try {
