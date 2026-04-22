@@ -100,11 +100,16 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Initial calibration from URL parameters if available
-    if (x && y) {
-      calibrateFromQR(Number(x), Number(y), Number(floor) || 1);
-    }
-  }, [x, y, floor, calibrateFromQR]);
+    // Always give the guest a starting position:
+    // - Use QR code coordinates if scanned (x, y, floor in URL params)
+    // - Fall back to lobby entrance (500, 400, floor 1) so they appear on the Admin map
+    calibrateFromQR(
+      x ? Number(x) : 500,
+      y ? Number(y) : 400,
+      floor ? Number(floor) : 1
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
 
   // Sync guest position to Firebase so Admin/Responder can see them on the map
   useEffect(() => {
