@@ -88,14 +88,21 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
   }, [propertyId]);
 
   // Spatial Grouping Logic
-  const groupedUsers = useMemo(() => {
+  // Spatial Grouping Logic
+  const { groups: groupedUsers, stats } = useMemo(() => {
     const groups = {};
+    const stats = { guests: 0, responders: 0 };
 
     Object.entries(locations).forEach(([id, loc]) => {
-      // Skip entries without lastSeen (legacy data) or older than 60 seconds
-      if (!loc.lastSeen || (Date.now() - loc.lastSeen) > 60000) return;
+      // Shorten staleness window to 20 seconds for emergency responsiveness
+      const isStale = !loc.lastSeen || (Date.now() - loc.lastSeen) > 20000;
+      if (isStale) return;
 
       let coordX, coordY, label;
+      const isResponder = loc.type === 'RESPONDER';
+
+      if (isResponder) stats.responders++;
+      else stats.guests++;
 
       // Case 1: User has a nodeId — look up coordinates from map data
       if (loc.nodeId && mapData?.nodes) {
@@ -109,7 +116,7 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
       else if (typeof loc.x === 'number' && typeof loc.y === 'number') {
         coordX = loc.x;
         coordY = loc.y;
-        label = loc.type === 'RESPONDER' ? 'RESPONDER' : 'FIELD';
+        label = isResponder ? 'RESPONDER' : 'FIELD';
       } else {
         return; // skip if no usable position
       }
@@ -129,7 +136,7 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
       if (loc.status === 'evacuating') groups[key].status = 'evacuating';
       if (loc.type === 'RESPONDER') groups[key].type = 'RESPONDER';
     });
-    return groups;
+    return { groups, stats };
   }, [locations, mapData]);
 
   if (loading) return (
@@ -197,7 +204,12 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
         <div className="absolute top-6 left-6 flex items-center gap-3">
            <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3">
               <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Active Tracking: {Object.keys(locations).length} Souls</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                Tactical Feed: {stats.guests + stats.responders} Souls
+                <span className="ml-2 opacity-50 font-medium">
+                  ({stats.guests}G | {stats.responders}R)
+                </span>
+              </span>
            </div>
         </div>
       </div>

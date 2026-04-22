@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ref, set, onValue, onDisconnect } from 'firebase/database';
@@ -74,7 +74,14 @@ function App() {
   const [liveStatus, setLiveStatus] = useState('PENDING');
   const [isNavigating, setIsNavigating] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('cb_theme') || 'dark');
-  const [guestId] = useState(() => `guest_${Math.random().toString(36).substr(2, 9)}`);
+  const [guestId] = useState(() => {
+    if (typeof window === 'undefined') return 'guest_server';
+    const stored = sessionStorage.getItem('crisis_guest_id');
+    if (stored) return stored;
+    const newId = `guest_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('crisis_guest_id', newId);
+    return newId;
+  });
   const [currentNodeId, setCurrentNodeId] = useState(null);
   const [batteryLevel, setBatteryLevel] = useState(100);
   
@@ -129,29 +136,36 @@ function App() {
   const isTriggeringRef = useRef(false);
   const lastTrackingWriteRef = useRef(0);
   useEffect(() => {
-    if (!position || !propertyId || !guestId) return;
-    if (view !== 'guest') return; // Only guests write their own tracking
+    if (!propertyId || !guestId) return;
+    if (view !== 'guest') return;
 
     const now = Date.now();
     const elapsed = now - lastTrackingWriteRef.current;
-
-    // Write immediately on first position, then cooldown 2s between writes
     if (elapsed < 2000 && lastTrackingWriteRef.current !== 0) return;
+
+    // Resolve Best Available Coordinates from live sensor position.
+    let finalX = position?.x;
+    let finalY = position?.y;
+    let finalFloor = position?.floor ?? 1;
+
+    // Skip write if we still have no coordinates
+    if (typeof finalX !== 'number' || typeof finalY !== 'number') return;
 
     lastTrackingWriteRef.current = now;
     const trackingRef = ref(rtdb, `tracking/${propertyId}/${guestId}`);
+    
+    // Configure cleanup ONCE for this session ID
+    onDisconnect(trackingRef).remove();
+
     set(trackingRef, {
-      x: position.x,
-      y: position.y,
-      nodeId: currentNodeId,
-      battery: batteryLevel,
-      floor: position.floor ?? 1,
+      x: finalX,
+      y: finalY,
+      nodeId: currentNodeId || null,
+      battery: batteryLevel || null,
+      floor: finalFloor,
       status: isSent ? 'evacuating' : 'active',
       lastSeen: now,
       type: 'GUEST'
-    }).then(() => {
-      // Auto-remove this entry when guest disconnects (closes tab/loses connection)
-      onDisconnect(trackingRef).remove();
     }).catch(err => console.warn('Tracking write failed:', err.message));
   }, [position, propertyId, guestId, isSent, view, currentNodeId, batteryLevel]);
 
@@ -200,16 +214,23 @@ function App() {
     setIsTriageLoading(true);
     setLastAlert(alertData);
 
-    // Immediately pin guest location on Admin map — use current position or default to lobby
-    const currentPos = position ?? { x: 500, y: 400, floor: 1 };
-    set(ref(rtdb, `tracking/${propertyId}/${guestId}`), {
-      x: currentPos.x,
-      y: currentPos.y,
-      floor: currentPos.floor ?? 1,
-      status: 'evacuating',
-      lastSeen: Date.now(),
-      type: 'GUEST'
-    }).catch(() => {});
+    // Telemetry Sync: Pin guest location immediately from the current live position.
+    const finalX = position?.x;
+    const finalY = position?.y;
+    
+    if (typeof finalX === 'number' && typeof finalY === 'number') {
+      const trackingRef = ref(rtdb, `tracking/${propertyId}/${guestId}`);
+      onDisconnect(trackingRef).remove(); // Register cleanup early
+      set(trackingRef, {
+        x: finalX,
+        y: finalY,
+        nodeId: currentNodeId || null,
+        floor: position?.floor || 1,
+        status: 'evacuating',
+        lastSeen: Date.now(),
+        type: 'GUEST'
+      }).catch(() => {});
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/triage`, {
