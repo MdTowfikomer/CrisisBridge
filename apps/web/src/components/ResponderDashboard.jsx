@@ -63,7 +63,7 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
   }, []);
 
   const propertyId = "HOTEL-101"; // Hardcoded for this demo/property context
-  const { position } = usePedestrianTracking(propertyId);
+  const { position, calibrateFromQR } = usePedestrianTracking(propertyId);
 
   // Sync Responder location to Firebase
   useEffect(() => {
