@@ -89,20 +89,34 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
 
   // Spatial Grouping Logic
   const groupedUsers = useMemo(() => {
-    if (!mapData?.nodes) return {};
-
     const groups = {};
-    Object.entries(locations).forEach(([id, loc]) => {
-      // Find coordinates from map node
-      const node = mapData.nodes[loc.nodeId];
-      if (!node) return;
 
-      const key = `${Math.round(node.x)},${Math.round(node.y)}`;
+    Object.entries(locations).forEach(([id, loc]) => {
+      let coordX, coordY, label;
+
+      // Case 1: User has a nodeId — look up coordinates from map data
+      if (loc.nodeId && mapData?.nodes) {
+        const node = mapData.nodes[loc.nodeId];
+        if (!node) return;
+        coordX = node.x;
+        coordY = node.y;
+        label = node.label || node.type?.toUpperCase() || 'ZONE';
+      }
+      // Case 2: User has direct x/y coordinates (responders + pedestrian tracking)
+      else if (typeof loc.x === 'number' && typeof loc.y === 'number') {
+        coordX = loc.x;
+        coordY = loc.y;
+        label = loc.type === 'RESPONDER' ? 'RESPONDER' : 'FIELD';
+      } else {
+        return; // skip if no usable position
+      }
+
+      const key = `${Math.round(coordX)},${Math.round(coordY)}`;
       if (!groups[key]) {
         groups[key] = { 
-          x: node.x, 
-          y: node.y, 
-          name: node.label || node.type.toUpperCase(),
+          x: coordX, 
+          y: coordY, 
+          name: label,
           users: [], 
           status: loc.status,
           type: loc.type

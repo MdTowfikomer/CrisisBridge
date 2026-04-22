@@ -104,21 +104,25 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
 
   const handleAction = async (dbKey, status) => {
     try {
+      // Always update Firebase first — this is the source of truth
       await update(ref(rtdb, `alerts/${dbKey}`), {
         status, 
         updatedAt: Date.now()
       });
 
+      // Fire-and-forget: notify backend (Render may be asleep on free tier)
       const endpoint = status === 'ACKNOWLEDGED' ? 'acknowledge' : 'resolve';
-      await fetch(`${apiBaseUrl}/${endpoint}`, {
+      const alertObj = alerts.find(a => a.dbKey === dbKey);
+      fetch(`${apiBaseUrl}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          alertId: alerts.find(a => a.dbKey === dbKey).id || dbKey,
+          alertId: alertObj?.id || dbKey,
           summary: status === 'RESOLVED' ? 'Incident handled via Command Center.' : undefined,
           actions: ['Responder Assigned']
         }),
-      });
+      }).catch(err => console.warn('Backend sync skipped (server may be sleeping):', err.message));
+
     } catch (err) {
       console.error('Action failed:', err);
     }
