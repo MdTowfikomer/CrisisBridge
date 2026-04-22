@@ -57,7 +57,7 @@ function App() {
   const x = urlParams.get('x');
   const y = urlParams.get('y');
   const floor = urlParams.get('floor');
-  const initialStartLocation = x && y ? { x: Number(x), y: Number(y), floor: Number(floor) || 1 } : { x: 500, y: 400, floor: 1 };
+  const initialStartLocation = x && y ? { x: Number(x), y: Number(y), floor: Number(floor) || 1 } : null;
 
   const [view, setView] = useState('guest');
   const [adminSection, setAdminSection] = useState('live-incidents');
@@ -121,16 +121,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Always give the guest a starting position:
-    // - Use QR code coordinates if scanned (x, y, floor in URL params)
-    // - Fall back to lobby entrance (500, 400, floor 1) so they appear on the Admin map
-    calibrateFromQR(
-      x ? Number(x) : 500,
-      y ? Number(y) : 400,
-      floor ? Number(floor) : 1
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only
+    // Only calibrate when explicit QR coordinates are provided.
+    if (!x || !y) return;
+    calibrateFromQR(Number(x), Number(y), floor ? Number(floor) : 1);
+  }, [x, y, floor, calibrateFromQR]);
 
   // Sync guest position to Firebase so Admin/Responder can see them on the map
   const isTriggeringRef = useRef(false);
