@@ -92,8 +92,8 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
     const groups = {};
 
     Object.entries(locations).forEach(([id, loc]) => {
-      // Skip stale entries (older than 60 seconds)
-      if (loc.lastSeen && (Date.now() - loc.lastSeen) > 60000) return;
+      // Skip entries without lastSeen (legacy data) or older than 60 seconds
+      if (!loc.lastSeen || (Date.now() - loc.lastSeen) > 60000) return;
 
       let coordX, coordY, label;
 
