@@ -146,43 +146,87 @@ export function usePedestrianTracking(initialStrideLength = 0.75, mapNodes?: Pos
         } : null
       }));
     };
+    let cleanupFn: () => void;
 
-    const handleDeviceMotion = (event: DeviceMotionEvent) => {
-      const acc = event.accelerationIncludingGravity;
-      if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+    // Try modern Generic Sensor API first (no deprecation warnings)
+    if (typeof (window as any).Accelerometer !== 'undefined') {
+      try {
+        const accel = new (window as any).Accelerometer({ frequency: 30 });
+        accel.addEventListener('reading', () => {
+          const { x, y, z } = accel;
+          const magnitude = Math.sqrt(x * x + y * y + z * z);
+          const stepThreshold = 12.0;
+          const now = Date.now();
+          if (magnitude > stepThreshold && lastAccelRef.current < stepThreshold) {
+            if (now - lastStepTimeRef.current > 300) {
+              handleStep();
+              lastStepTimeRef.current = now;
+            }
+          }
+          lastAccelRef.current = magnitude;
+        });
+        accel.start();
 
-      // Simple magnitude calculation
-      const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-
-      // Thresholds for step detection
-      const stepThreshold = 12.0;
-      const now = Date.now();
-
-      if (magnitude > stepThreshold && lastAccelRef.current < stepThreshold) {
-        if (now - lastStepTimeRef.current > 300) { // Debounce 300ms       
-           handleStep();
-           lastStepTimeRef.current = now;
+        let orientSensor: any = null;
+        if (typeof (window as any).AbsoluteOrientationSensor !== 'undefined') {
+          try {
+            orientSensor = new (window as any).AbsoluteOrientationSensor({ frequency: 10 });
+            orientSensor.addEventListener('reading', () => {
+              // Convert quaternion to heading (yaw in degrees)
+              const [x, y, z, w] = orientSensor.quaternion;
+              const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+              const heading = ((yaw * 180) / Math.PI + 360) % 360;
+              setState(prev => ({ ...prev, heading }));
+            });
+            orientSensor.start();
+          } catch { /* orientation sensor not available */ }
         }
-      }
-      lastAccelRef.current = magnitude;
-    };
 
-    const handleDeviceOrientation = (event: DeviceOrientationEvent) => {   
-       if (event.alpha !== null) {
-          // Alpha is rotation around z axis
-          // For actual compass, we'd use webkitCompassHeading if available
+        cleanupFn = () => {
+          accel.stop();
+          orientSensor?.stop();
+        };
+      } catch {
+        // Fall through to legacy events
+        useLegacyEvents();
+      }
+    } else {
+      useLegacyEvents();
+    }
+
+    function useLegacyEvents() {
+      const handleDeviceMotion = (event: DeviceMotionEvent) => {
+        const acc = event.accelerationIncludingGravity;
+        if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+        const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+        const stepThreshold = 12.0;
+        const now = Date.now();
+        if (magnitude > stepThreshold && lastAccelRef.current < stepThreshold) {
+          if (now - lastStepTimeRef.current > 300) {
+            handleStep();
+            lastStepTimeRef.current = now;
+          }
+        }
+        lastAccelRef.current = magnitude;
+      };
+
+      const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
+        if (event.alpha !== null) {
           const heading = (event as any).webkitCompassHeading || (360 - event.alpha);
           setState(prev => ({ ...prev, heading }));
-       }
-    };
+        }
+      };
 
-    window.addEventListener('devicemotion', handleDeviceMotion);
-    window.addEventListener('deviceorientation', handleDeviceOrientation); 
+      window.addEventListener('devicemotion', handleDeviceMotion);
+      window.addEventListener('deviceorientation', handleDeviceOrientation);
 
-    return () => {
-      window.removeEventListener('devicemotion', handleDeviceMotion);      
-      window.removeEventListener('deviceorientation', handleDeviceOrientation);
-    };
+      cleanupFn = () => {
+        window.removeEventListener('devicemotion', handleDeviceMotion);
+        window.removeEventListener('deviceorientation', handleDeviceOrientation);
+      };
+    }
+
+    return () => cleanupFn?.();
   }, [state.isActive, mapNodes]);
 
   return {
