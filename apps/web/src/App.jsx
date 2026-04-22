@@ -112,24 +112,28 @@ function App() {
   }, []); // run once on mount only
 
   // Sync guest position to Firebase so Admin/Responder can see them on the map
+  const lastTrackingWriteRef = React.useRef(0);
   useEffect(() => {
     if (!position || !propertyId || !guestId) return;
+    if (view !== 'guest') return; // Only guests write their own tracking
 
-    const throttleMs = 2000; // only write every 2 seconds max
-    const timer = setTimeout(() => {
-      const trackingRef = ref(rtdb, `tracking/${propertyId}/${guestId}`);
-      set(trackingRef, {
-        x: position.x,
-        y: position.y,
-        floor: position.floor ?? 1,
-        status: isSent ? 'evacuating' : 'active',
-        lastSeen: Date.now(),
-        type: 'GUEST'
-      }).catch(() => {}); // silent fail — non-critical
-    }, throttleMs);
+    const now = Date.now();
+    const elapsed = now - lastTrackingWriteRef.current;
 
-    return () => clearTimeout(timer);
-  }, [position, propertyId, guestId, isSent]);
+    // Write immediately on first position, then cooldown 2s between writes
+    if (elapsed < 2000 && lastTrackingWriteRef.current !== 0) return;
+
+    lastTrackingWriteRef.current = now;
+    const trackingRef = ref(rtdb, `tracking/${propertyId}/${guestId}`);
+    set(trackingRef, {
+      x: position.x,
+      y: position.y,
+      floor: position.floor ?? 1,
+      status: isSent ? 'evacuating' : 'active',
+      lastSeen: now,
+      type: 'GUEST'
+    }).catch(err => console.warn('Tracking write failed:', err.message));
+  }, [position, propertyId, guestId, isSent, view]);
 
   useEffect(() => {
     const route = window.location.pathname.replace(/\/+$/, '') || '/';

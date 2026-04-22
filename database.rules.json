@@ -25,10 +25,8 @@
     },
     "tracking": {
       "$propertyId": {
-        "$userId": {
-          ".read": "true",
-          ".write": "true"
-        }
+        ".read": "true",
+        ".write": "true"
       }
     },
     "broadcasts": {
