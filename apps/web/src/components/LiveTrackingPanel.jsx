@@ -4,8 +4,9 @@ import { rtdb } from '../lib/firebase';
 import { MapPin, Users, Flame, Shield, Radio, Eye, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const UserGroupMarker = ({ x, y, count, status, isSelected, onClick }) => {
+export const UserGroupMarker = ({ x, y, count, status, type, isSelected, onClick }) => {
   const isEmergency = status === 'evacuating';
+  const isResponder = type === 'RESPONDER';
   
   return (
     <motion.g 
@@ -15,18 +16,20 @@ const UserGroupMarker = ({ x, y, count, status, isSelected, onClick }) => {
       className="cursor-pointer group"
     >
       <motion.circle
-        cx={x} cy={y} r={count > 1 ? 16 : 12}
-        fill={isEmergency ? '#ef4444' : '#3b82f6'}
+        cx={x} cy={y} r={isResponder ? 18 : (count > 1 ? 16 : 12)}
+        fill={isResponder ? '#10b981' : (isEmergency ? '#ef4444' : '#3b82f6')}
         initial={{ opacity: 0.2 }}
-        animate={{ opacity: [0.1, 0.3, 0.1] }}
+        animate={{ opacity: isResponder ? [0.2, 0.5, 0.2] : [0.1, 0.3, 0.1] }}
         transition={{ repeat: Infinity, duration: 2 }}
       />
       <circle
-        cx={x} cy={y} r={count > 1 ? 10 : 8}
-        fill={isEmergency ? '#ef4444' : '#3b82f6'}
+        cx={x} cy={y} r={isResponder ? 12 : (count > 1 ? 10 : 8)}
+        fill={isResponder ? '#10b981' : (isEmergency ? '#ef4444' : '#3b82f6')}
         className={isSelected ? "stroke-white stroke-[3px]" : "stroke-transparent"}
       />
-      {count > 1 && (
+      {isResponder ? (
+        <Shield x={x - 6} y={y - 6} className="w-3 h-3 text-white pointer-events-none" />
+      ) : count > 1 && (
         <text 
           x={x} y={y + 4} 
           fontSize="10" fill="white" textAnchor="middle" 
@@ -101,11 +104,13 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
           y: node.y, 
           name: node.label || node.type.toUpperCase(),
           users: [], 
-          status: loc.status 
+          status: loc.status,
+          type: loc.type
         };
       }
       groups[key].users.push({ id, ...loc });
       if (loc.status === 'evacuating') groups[key].status = 'evacuating';
+      if (loc.type === 'RESPONDER') groups[key].type = 'RESPONDER';
     });
     return groups;
   }, [locations, mapData]);
@@ -147,6 +152,7 @@ export function LiveTrackingPanel({ apiBaseUrl }) {
               x={group.x} y={group.y}
               count={group.users.length}
               status={group.status}
+              type={group.type}
               isSelected={selectedGroupId === key}
               onClick={() => setSelectedGroupId(key)}
             />

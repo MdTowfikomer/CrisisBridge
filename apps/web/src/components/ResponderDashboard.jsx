@@ -241,6 +241,28 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
                   onDismiss={() => setSelectedAlertId(null)} 
                   apiBaseUrl={apiBaseUrl}
                />
+
+               {!position && (
+                  <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <motion.div 
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="bg-slate-900 border-2 border-emerald-500/30 p-8 rounded-[2.5rem] text-center max-w-sm shadow-2xl"
+                    >
+                      <div className="bg-emerald-500/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
+                        <Radio className="w-8 h-8 text-emerald-400" />
+                      </div>
+                      <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-2">Ready for Duty?</h2>
+                      <p className="text-xs text-slate-400 leading-relaxed mb-8">Establish your tactical position at the main entrance to begin your shift and receive live mission data.</p>
+                      <button 
+                        onClick={() => calibrateFromQR(480, 720, 1)}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-600/20 transition-all active:scale-95"
+                      >
+                        Clock In @ Lobby
+                      </button>
+                    </motion.div>
+                  </div>
+               )}
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-700 bg-[#050608]">
