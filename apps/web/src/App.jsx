@@ -106,6 +106,26 @@ function App() {
     }
   }, [x, y, floor, calibrateFromQR]);
 
+  // Sync guest position to Firebase so Admin/Responder can see them on the map
+  useEffect(() => {
+    if (!position || !propertyId || !guestId) return;
+
+    const throttleMs = 2000; // only write every 2 seconds max
+    const timer = setTimeout(() => {
+      const trackingRef = ref(rtdb, `tracking/${propertyId}/${guestId}`);
+      set(trackingRef, {
+        x: position.x,
+        y: position.y,
+        floor: position.floor ?? 1,
+        status: isSent ? 'evacuating' : 'active',
+        lastSeen: Date.now(),
+        type: 'GUEST'
+      }).catch(() => {}); // silent fail — non-critical
+    }, throttleMs);
+
+    return () => clearTimeout(timer);
+  }, [position, propertyId, guestId, isSent]);
+
   useEffect(() => {
     const route = window.location.pathname.replace(/\/+$/, '') || '/';
     const routeParts = route.split('/').filter(Boolean);
