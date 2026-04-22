@@ -75,6 +75,8 @@ function App() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('cb_theme') || 'dark');
   const [guestId] = useState(() => `guest_${Math.random().toString(36).substr(2, 9)}`);
+  const [currentNodeId, setCurrentNodeId] = useState(null);
+  const [batteryLevel, setBatteryLevel] = useState(100);
   
   // Auth State
   const [user, setUser] = useState(null);
@@ -99,6 +101,18 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Sync battery level
+  useEffect(() => {
+    if (navigator.getBattery) {
+      navigator.getBattery().then(batt => {
+        setBatteryLevel(Math.round(batt.level * 100));
+        const updateBattery = () => setBatteryLevel(Math.round(batt.level * 100));
+        batt.addEventListener('levelchange', updateBattery);
+        return () => batt.removeEventListener('levelchange', updateBattery);
+      });
+    }
+  }, []);
+
   useEffect(() => {
     // Always give the guest a starting position:
     // - Use QR code coordinates if scanned (x, y, floor in URL params)
@@ -112,7 +126,8 @@ function App() {
   }, []); // run once on mount only
 
   // Sync guest position to Firebase so Admin/Responder can see them on the map
-  const lastTrackingWriteRef = React.useRef(0);
+  const isTriggeringRef = useRef(false);
+  const lastTrackingWriteRef = useRef(0);
   useEffect(() => {
     if (!position || !propertyId || !guestId) return;
     if (view !== 'guest') return; // Only guests write their own tracking
@@ -128,6 +143,8 @@ function App() {
     set(trackingRef, {
       x: position.x,
       y: position.y,
+      nodeId: currentNodeId,
+      battery: batteryLevel,
       floor: position.floor ?? 1,
       status: isSent ? 'evacuating' : 'active',
       lastSeen: now,
@@ -136,7 +153,7 @@ function App() {
       // Auto-remove this entry when guest disconnects (closes tab/loses connection)
       onDisconnect(trackingRef).remove();
     }).catch(err => console.warn('Tracking write failed:', err.message));
-  }, [position, propertyId, guestId, isSent, view]);
+  }, [position, propertyId, guestId, isSent, view, currentNodeId, batteryLevel]);
 
   useEffect(() => {
     const route = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -164,7 +181,8 @@ function App() {
 
   const handleTrigger = async (type) => {
     // Submission Lock: prevent multiple triggers while one is sending
-    if (isTriageLoading || isSent) return;
+    if (isTriggeringRef.current || isSent) return;
+    isTriggeringRef.current = true;
 
     const alertData = {
       type,
@@ -211,6 +229,7 @@ function App() {
       setSubmitError(getRequestErrorMessage(error, 'Offline Mode: Signal queued. Please use safety buttons below.'));
     } finally {
       setIsTriageLoading(false);
+      isTriggeringRef.current = false;
     }
   };
 
@@ -242,6 +261,7 @@ function App() {
           roomId={rawRoom}
           propertyId={propertyId}
           apiBaseUrl={API_BASE_URL}
+          onNodeUpdate={setCurrentNodeId}
         />
       ) : (
         <main className="flex-1 flex flex-col p-6 max-w-lg mx-auto w-full">

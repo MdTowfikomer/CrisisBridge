@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, set, onDisconnect } from 'firebase/database';
 import { signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -17,7 +17,6 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartBroadcastTool } from './SmartBroadcastTool';
 import { usePedestrianTracking } from '../hooks/usePedestrianTracking';
-import { set } from 'firebase/database';
 import { LiveTrackingPanel } from './LiveTrackingPanel';
 import { TacticalFocusCard } from './TacticalFocusCard';
 
@@ -66,18 +65,25 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
   const { position, calibrateFromQR } = usePedestrianTracking(propertyId);
 
   // Sync Responder location to Firebase
+  const lastWriteRef = React.useRef(0);
   useEffect(() => {
     if (position && auth.currentUser) {
+      const now = Date.now();
+      if (now - lastWriteRef.current < 2000) return;
+      lastWriteRef.current = now;
+
       const responderId = `responder_${auth.currentUser.uid.substring(0, 8)}`;
       const trackingRef = ref(rtdb, `tracking/${propertyId}/${responderId}`);
       set(trackingRef, {
         ...position,
         status: 'responding',
-        lastSeen: Date.now(),
+        lastSeen: now,
         type: 'RESPONDER'
-      });
+      }).then(() => {
+        onDisconnect(trackingRef).remove();
+      }).catch(err => console.warn('Responder tracking failed:', err.message));
     }
-  }, [position]);
+  }, [position, propertyId]);
 
   useEffect(() => {
     const alertsRef = ref(rtdb, 'alerts');

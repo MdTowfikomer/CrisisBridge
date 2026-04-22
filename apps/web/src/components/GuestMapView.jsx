@@ -61,7 +61,7 @@ const UserIndicator = ({ pos, color }) => (
   </g>
 );
 
-export function GuestMapView({ startLocation, roomId, propertyId, apiBaseUrl }) {
+export function GuestMapView({ startLocation, roomId, propertyId, apiBaseUrl, onNodeUpdate }) {
   const [mapData, setMapData] = useState(null);
   const [floorplanSvg, setFloorplanSvg] = useState('');
   const [loading, setLoading] = useState(true);
@@ -72,7 +72,6 @@ export function GuestMapView({ startLocation, roomId, propertyId, apiBaseUrl }) 
   const [currentPath, setCurrentPath] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [pathTotalLength, setPathTotalLength] = useState(0);
-  const [userId] = useState(() => `user_${Math.random().toString(36).substr(2, 9)}`);
 
   // 0. Persistence Layer (Survival Mode)
   useEffect(() => {
@@ -99,47 +98,17 @@ export function GuestMapView({ startLocation, roomId, propertyId, apiBaseUrl }) 
     }
   }, [propertyId]);
 
-  // Telemetry: Push live location to Tactical Dashboard
+  // Report current node back to App.jsx for unified telemetry
   useEffect(() => {
-    if (!propertyId || !userId) return;
-    
-    const trackingRef = ref(rtdb, `tracking/${propertyId}/${userId}`);
-    
-    // We get the battery if possible, else 100
-    let batteryLevel = 100;
-    if (navigator.getBattery) {
-      navigator.getBattery().then(batt => {
-        batteryLevel = Math.round(batt.level * 100);
-      });
+    const currentNodeId = currentPath ? currentPath[currentStepIndex] : roomId;
+    if (onNodeUpdate && currentNodeId) {
+      onNodeUpdate(currentNodeId);
     }
-
-    const pushTelemetry = () => {
-      // Determine what node the user is currently at
-      // If they are following a path, they are at currentPath[currentStepIndex]
-      // Else they are at roomId (QR anchor)
-      const currentNodeId = currentPath ? currentPath[currentStepIndex] : roomId;
-      
-      if (!currentNodeId) return; // Wait until we know where they are
-
-      set(trackingRef, {
-        nodeId: currentNodeId,
-        status: 'SAFE', // Could sync this to actual SOS state if we lift state
-        battery: batteryLevel,
-        timestamp: Date.now()
-      });
-    };
-
-    // Initial push
-    pushTelemetry();
-    
-    // Update every 5 seconds
-    const interval = setInterval(pushTelemetry, 5000);
-    
+    // Cleanup: clear node when leaving tactical map
     return () => {
-      clearInterval(interval);
-      set(trackingRef, null); // Remove dot when they close the app
+      if (onNodeUpdate) onNodeUpdate(null);
     };
-  }, [propertyId, userId, currentPath, currentStepIndex, roomId]);
+  }, [currentPath, currentStepIndex, roomId, onNodeUpdate]);
 
   // 1. Load Map
   useEffect(() => {
