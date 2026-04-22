@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ref, push, set, onValue } from 'firebase/database';
+import { ref, set, onValue, onDisconnect } from 'firebase/database';
 import { onAuthStateChanged } from 'firebase/auth';
 import { 
   AlertCircle, 
@@ -132,6 +132,9 @@ function App() {
       status: isSent ? 'evacuating' : 'active',
       lastSeen: now,
       type: 'GUEST'
+    }).then(() => {
+      // Auto-remove this entry when guest disconnects (closes tab/loses connection)
+      onDisconnect(trackingRef).remove();
     }).catch(err => console.warn('Tracking write failed:', err.message));
   }, [position, propertyId, guestId, isSent, view]);
 
@@ -200,12 +203,8 @@ function App() {
       if (!response.ok) throw new Error('Connection failed. Alert queued for retry.');
 
       const result = await response.json();
-      const finalAlertData = { ...alertData, id: result.alertId, triage: result.triage };
-
-      const alertsRef = ref(rtdb, 'alerts');
-      const newAlertRef = push(alertsRef);
-      await set(newAlertRef, finalAlertData);
-      setActiveAlertKey(newAlertRef.key || '');
+      // Server already wrote the alert to Firebase — just track the key for live status updates
+      setActiveAlertKey(result.alertId || '');
       setTriageData(result.triage);
       useAppStore.getState().setCrisisMode(true);
     } catch (error) {
