@@ -14,10 +14,10 @@ import {
   List as ListIcon,
   LogOut
 } from 'lucide-react';
-import { LiveTrackingPanel } from './LiveTrackingPanel';
-import { TacticalFocusCard } from './TacticalFocusCard';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartBroadcastTool } from './SmartBroadcastTool';
+import { usePedestrianTracking } from '../hooks/usePedestrianTracking';
+import { set } from 'firebase/database';
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -59,6 +59,23 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const propertyId = "HOTEL-101"; // Hardcoded for this demo/property context
+  const { position } = usePedestrianTracking(propertyId);
+
+  // Sync Responder location to Firebase
+  useEffect(() => {
+    if (position && auth.currentUser) {
+      const responderId = `responder_${auth.currentUser.uid.substring(0, 8)}`;
+      const trackingRef = ref(rtdb, `tracking/${propertyId}/${responderId}`);
+      set(trackingRef, {
+        ...position,
+        status: 'responding',
+        lastSeen: Date.now(),
+        type: 'RESPONDER'
+      });
+    }
+  }, [position]);
 
   useEffect(() => {
     const alertsRef = ref(rtdb, 'alerts');
@@ -212,16 +229,16 @@ export const ResponderDashboard = ({ apiBaseUrl }) => {
         <main className="flex-1 flex flex-col relative bg-black overflow-hidden">
           {selectedAlert ? (
             <>
+               <div className="absolute inset-0 z-0">
+                  <LiveTrackingPanel apiBaseUrl={apiBaseUrl} />
+               </div>
+               
                <TacticalFocusCard 
                   alert={selectedAlert} 
                   onAction={handleAction} 
                   onDismiss={() => setSelectedAlertId(null)} 
+                  apiBaseUrl={apiBaseUrl}
                />
-
-               {/* Dynamic Map Component */}
-               <div className="flex-1 w-full h-full">
-                  <LiveTrackingPanel apiBaseUrl={apiBaseUrl} />
-               </div>
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-700 bg-[#050608]">

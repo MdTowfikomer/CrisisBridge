@@ -131,7 +131,8 @@ function App() {
   }, [activeAlertKey]);
 
   const handleTrigger = async (type) => {
-    if (isTriageLoading) return;
+    // Submission Lock: prevent multiple triggers while one is sending
+    if (isTriageLoading || isSent) return;
 
     const alertData = {
       type,

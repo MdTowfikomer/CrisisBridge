@@ -32,7 +32,7 @@ const STATUS_CONFIG = {
   }
 };
 
-export const TacticalFocusCard = ({ alert, onAction, onDismiss }) => {
+export const TacticalFocusCard = ({ alert, onAction, onDismiss, apiBaseUrl }) => {
   if (!alert) return null;
   const config = STATUS_CONFIG[alert.status];
 
@@ -77,7 +77,7 @@ export const TacticalFocusCard = ({ alert, onAction, onDismiss }) => {
           <div className="grid grid-cols-1 gap-3">
             {alert.status === 'RESOLVED' && (
               <a
-                href={`${import.meta.env.VITE_BACKEND_URL}/audit/${alert.id || alert.dbKey}/pdf`}
+                href={`${apiBaseUrl || '/api'}/audit/${alert.id || alert.dbKey}/pdf`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-xl transition-all active:scale-95"
