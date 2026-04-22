@@ -10,7 +10,7 @@ export function BroadcastTakeover({ propertyId, userPosition, guestId }) {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
 
   useEffect(() => {
-    if (!propertyId || !userPosition) return;
+    if (!propertyId) return;
 
     const broadcastsRef = ref(rtdb, `broadcasts/${propertyId}`);
     const unsubscribe = onValue(broadcastsRef, (snapshot) => {
@@ -25,7 +25,11 @@ export function BroadcastTakeover({ propertyId, userPosition, guestId }) {
         .filter(b => b.active)
         .sort((a, b) => b.createdAt - a.createdAt);
 
-      const relevant = list.find(b => isUserInBroadcastZone(userPosition, b));
+      const relevant = list.find(b => {
+        if (b.zoneType === 'GLOBAL') return true;
+        if (!userPosition) return false;
+        return isUserInBroadcastZone(userPosition, b);
+      });
       
       if (relevant) {
         setActiveBroadcast(relevant);
