@@ -18,6 +18,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { SmartBroadcastTool } from './SmartBroadcastTool';
 import { usePedestrianTracking } from '../hooks/usePedestrianTracking';
 import { set } from 'firebase/database';
+import { LiveTrackingPanel } from './LiveTrackingPanel';
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
