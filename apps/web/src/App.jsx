@@ -175,6 +175,17 @@ function App() {
     setIsTriageLoading(true);
     setLastAlert(alertData);
 
+    // Immediately pin guest location on Admin map — use current position or default to lobby
+    const currentPos = position ?? { x: 500, y: 400, floor: 1 };
+    set(ref(rtdb, `tracking/${propertyId}/${guestId}`), {
+      x: currentPos.x,
+      y: currentPos.y,
+      floor: currentPos.floor ?? 1,
+      status: 'evacuating',
+      lastSeen: Date.now(),
+      type: 'GUEST'
+    }).catch(() => {});
+
     try {
       const response = await fetch(`${API_BASE_URL}/triage`, {
         method: 'POST',

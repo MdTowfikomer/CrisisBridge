@@ -14,6 +14,11 @@ export function usePedestrianTracking(initialStrideLength = 0.75, mapNodes?: Pos
   const lastAccelRef = useRef(0);
   const lastStepTimeRef = useRef(0);
 
+  // Keep stateRef in sync so callbacks never use stale state
+  useEffect(() => {
+    stateRef.current = state;
+  });
+
   // Anchor tracking for dynamic calibration
   const lastAnchorRef = useRef<{ pos: Position, stepsAtScan: number } | null>(null);
 
